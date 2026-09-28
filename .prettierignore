@@ -1,5 +1,6 @@
 .next/
 .source/
+next-env.d.ts
 coverage/
 node_modules/
 out/
