@@ -1,0 +1,32 @@
+---
+title: Set Up a New Mac
+description: A layered, reproducible setup for a personal software-development Mac.
+tags:
+  - macos
+  - setup
+  - developer-experience
+status: growing
+---
+
+Treat a new Mac as a recovery exercise, not a sequence of one-off installs. Secure it first, make
+the package inventory reproducible, restore personal configuration deliberately, and validate the
+toolchain before copying project data.
+
+## Recommended order
+
+1. Complete the [first-hour checklist](./first-hour).
+2. Configure a [terminal and shell](./terminal-and-shell).
+3. Make commands retrievable with [history and navigation tools](./command-history-and-navigation).
+4. Install [packages and applications](./packages-and-apps) from a reviewed inventory.
+5. Establish the [developer toolchain](./developer-toolchain).
+6. Restore [dotfiles and automation](./dotfiles-and-automation).
+7. Verify [security and backups](./security-and-backups).
+
+Keep machine bootstrap configuration separate from project dependencies. Homebrew owns macOS
+applications and general command-line utilities; Mise owns language runtimes and project-scoped
+developer tools; each repository owns its dependencies and setup commands.
+
+<Callout type="warn" title="Review before running">
+  Never execute an old bootstrap script blindly. Read it, remove obsolete taps and packages, and
+  confirm that it does not overwrite current shell, SSH, Git, cloud, or credential configuration.
+</Callout>

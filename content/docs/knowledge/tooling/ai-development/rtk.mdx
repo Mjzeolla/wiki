@@ -1,0 +1,60 @@
+---
+title: RTK
+description: Compressing development-command output before it enters an AI agent's context.
+tags:
+  - rtk
+  - ai-agents
+  - cli
+status: growing
+sources:
+  - https://github.com/rtk-ai/rtk
+---
+
+RTK is a CLI proxy that runs supported commands and filters, groups, truncates, or deduplicates their
+output before an AI coding agent reads it. It supports common file, Git, test, build, lint, package,
+container, cloud, and infrastructure commands.
+
+## Why use it
+
+Test runners, builds, Git operations, and logs often emit far more successful or repetitive output
+than an agent needs. RTK keeps failures and useful structure while collapsing routine noise, leaving
+more context for code and reasoning.
+
+The project's savings metrics estimate reduced shell-output tokens, not an equal reduction in the
+total model bill. Prompts, conversation history, retrieved files, and model output still contribute.
+
+## Use it when
+
+- routine commands produce large, repetitive output;
+- an agent repeatedly runs supported tests, builds, linters, or Git inspection;
+- command-output context is crowding out relevant source; or
+- a compact first pass can be followed by targeted raw diagnostics.
+
+## Do not rely on filtering when
+
+- exact output, ordering, whitespace, warnings, or progress is the artifact;
+- another program consumes stdout;
+- diagnosing RTK itself or an unsupported parser;
+- capturing complete audit or incident evidence; or
+- the compact summary does not explain a failure.
+
+## Typical use
+
+```bash
+rtk git status
+rtk git diff
+rtk grep "pattern" .
+rtk vitest
+rtk playwright test
+rtk pytest
+rtk go test ./...
+rtk ruff check .
+rtk golangci-lint run
+```
+
+Use `rtk run` or the original command for raw behavior. Verify exit codes, not only summaries. RTK
+does not make a push, deployment, cloud mutation, or destructive command safer or newly authorized.
+
+Transparent agent hooks can rewrite shell calls automatically. Treat hook initialization as an
+environment change: review upstream instructions, choose project or global scope deliberately, and
+keep an obvious way to inspect or bypass the rewrite.

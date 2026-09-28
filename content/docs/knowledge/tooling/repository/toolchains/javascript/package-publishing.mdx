@@ -1,0 +1,55 @@
+---
+title: Publishing JavaScript Packages
+description: Building, inspecting, versioning, and securely publishing packages to npm-compatible registries.
+tags:
+  - npm
+  - javascript
+  - publishing
+status: growing
+sources:
+  - https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/
+  - https://docs.npmjs.com/cli/commands/npm-pack
+  - https://docs.npmjs.com/trusted-publishers/
+---
+
+Publishing makes the files selected by `package.json`, `.npmignore`, and npm's inclusion rules
+available from a registry. A deployed application does not need this workflow; set `private: true`
+for packages that must never be published accidentally.
+
+## Prepare the package
+
+- Choose an unscoped or organization-scoped name and define supported entry points with `exports`.
+- Include the README, license, type declarations, and only the runtime files consumers need.
+- Declare runtime packages in `dependencies`, build/test tools in `devDependencies`, and host-provided
+  libraries in `peerDependencies` when that contract is real.
+- Build from a clean checkout and test the installed artifact, not only source imports.
+
+Inspect the exact archive before release:
+
+```bash
+npm pack --dry-run
+npm pack
+```
+
+Install the resulting tarball in a small consumer fixture and verify CommonJS/ESM entry points,
+types, exports, and runtime dependencies.
+
+## Publish safely
+
+Versions already published to npm are immutable, so release a new semantic version rather than
+trying to replace an artifact. Scoped packages require explicit public access when publishing them
+publicly:
+
+```bash
+npm publish --access public
+```
+
+Prefer a protected CI release triggered from an reviewed tag or release commit. Use npm trusted
+publishing with a supported CI provider when its current Node and npm requirements fit the project;
+it replaces long-lived registry tokens with short-lived OIDC credentials and produces provenance.
+Otherwise use a narrowly scoped token stored only in the CI secret manager, with registry-side 2FA
+and package access controls.
+
+After publishing, install the exact version from the registry in a clean environment and verify the
+package page, provenance, files, entry points, and deprecation state. Document ownership and the
+recovery process because a bad immutable release normally requires a follow-up version.

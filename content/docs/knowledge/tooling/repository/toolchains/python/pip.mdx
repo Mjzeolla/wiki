@@ -1,0 +1,29 @@
+---
+title: pip
+description: Installing Python distributions from PyPI-compatible indexes and local artifacts.
+tags:
+  - python
+  - pip
+status: growing
+sources:
+  - https://pip.pypa.io/en/stable/
+  - https://packaging.python.org/en/latest/flow/
+---
+
+pip installs Python distributions into an environment. It can install from PyPI-compatible indexes,
+requirements files, local wheels, source trees, and version-control URLs.
+
+pip is not a publishing service and does not upload packages. Projects publish wheels and source
+distributions to an index such as PyPI; consumers then install those artifacts with pip or another
+compatible installer.
+
+Use an isolated virtual environment and invoke pip through the intended interpreter:
+
+```bash
+python -m pip install package-name
+```
+
+For an application that needs a cross-platform lockfile and environment synchronization, use a
+project manager such as uv or Poetry rather than treating a loosely pinned `requirements.txt` as a
+complete packaging strategy. Preserve pip-based workflows when interoperability or platform
+constraints require them.

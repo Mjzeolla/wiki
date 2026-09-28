@@ -1,0 +1,29 @@
+---
+title: Mise
+description: Pinning language runtimes, developer tools, and shared tasks in one project configuration.
+tags:
+  - mise
+  - toolchains
+status: growing
+sources:
+  - https://mise.jdx.dev/configuration.html
+---
+
+## Why use it
+
+Mise gives a repository one declared source for runtime and developer-tool versions. A contributor,
+editor, or CI job can install the same Node, Python, Go, pnpm, and command-line tools from
+`mise.toml`; a lockfile can preserve resolved tool versions.
+
+## Use it when
+
+- a project needs more than one global runtime or CLI;
+- contributors otherwise maintain separate version-manager instructions; or
+- a polyglot repository needs one setup entrypoint and shared tasks.
+
+## Avoid or limit it when
+
+Do not use Mise as a substitute for ecosystem metadata and lockfiles. `package.json` engines,
+`requires-python`, `go.mod`, and dependency lockfiles still define compatibility and dependency
+resolution. A repository controlled entirely by a platform-specific toolchain may not need another
+layer.

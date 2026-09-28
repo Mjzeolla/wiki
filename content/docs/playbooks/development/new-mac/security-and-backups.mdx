@@ -1,0 +1,52 @@
+---
+title: Security and Backups
+description: Verify encryption, recovery, updates, least privilege, and actual restore capability.
+tags:
+  - macos
+  - security
+  - backups
+status: growing
+---
+
+## Security baseline
+
+- Turn on FileVault under **System Settings → Privacy & Security → FileVault**. Apple notes that
+  Apple-silicon and T2 Macs encrypt data automatically, while FileVault adds login-bound protection.
+- Keep the recovery key outside the encrypted Mac, or understand the Apple Account recovery choice.
+- Enable automatic security updates and review major operating-system upgrades before installing
+  them on a critical development machine.
+- Never disable macOS security controls merely to make an installer work.
+- Grant Accessibility, Full Disk Access, Screen Recording, microphone, and camera permissions only
+  to applications that need them, then review those lists periodically.
+- Use a password manager, unique passwords, and phishing-resistant multifactor authentication where
+  supported.
+
+See Apple's current [FileVault guide](https://support.apple.com/guide/mac-help/mh11785/mac) for the
+recovery implications before enabling it.
+
+## Backups are restore workflows
+
+Time Machine can restore individual files or the full Mac. Configure it using Apple's
+[Mac backup guidance](https://support.apple.com/mac-backup), then verify all three:
+
+1. a recent backup completes;
+2. an older file can be browsed;
+3. at least one non-critical file can be restored and opened.
+
+Cloud sync is useful but is not automatically a complete backup. Git hosting protects committed
+repository history, not uncommitted work, local databases, ignored files, credentials, or
+application state. Keep important data in at least two failure domains and test recovery before the
+old Mac is erased or traded in.
+
+## Final verification
+
+```bash
+softwareupdate --history
+fdesetup status
+brew doctor
+mise doctor
+git config --global --list --show-origin
+```
+
+Read command output before acting on it. A warning may document an intentional choice; a
+clean-looking command does not prove that backups restore or credentials are revocable.

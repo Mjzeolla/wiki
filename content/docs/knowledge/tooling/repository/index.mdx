@@ -1,0 +1,26 @@
+---
+title: Repository Tooling
+description: Toolchain, formatting, linting, and Git-hook choices for maintainable repositories.
+tags:
+  - tooling
+  - repositories
+status: growing
+---
+
+Repository tools are grouped by the responsibility they own, so adding another formatter or
+hook runner does not turn this page into a flat catalog.
+
+| Domain                           | Responsibility                                       | Included guidance                |
+| -------------------------------- | ---------------------------------------------------- | -------------------------------- |
+| [Toolchains](./toolchains)       | Runtime, dependency, and package-release tooling     | Mise, npm, pnpm, pip, uv, Poetry |
+| [Formatting](./formatting)       | Deterministic source and document formatting         | Prettier                         |
+| [Linting and quality](./linting) | Static analysis, style rules, and specialized checks | ESLint, Markdownlint, Lychee     |
+| [Git hooks](./hooks)             | Fast local checks around commits and pushes          | Husky, pre-commit                |
+| [Automation](./automation)       | Reusable scripts, CI gates, and delivery workflows   | CI/CD, scripting layers          |
+
+Hooks provide fast local feedback; CI remains authoritative because hooks can be skipped.
+
+- [CI/CD and quality gates](./automation/ci-cd) explains when to add Markdownlint, Lychee, ShellCheck,
+  actionlint, security checks, tests, builds, and deployment stages.
+- [Repository scripting layers](./automation/scripting-layer) shows how to keep reusable automation out of
+  workflow YAML and flat script dumps.

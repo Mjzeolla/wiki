@@ -1,0 +1,20 @@
+---
+title: Python Toolchains
+description: Installers, project managers, environments, lockfiles, builds, and publishing for Python repositories.
+---
+
+Python packaging separates several responsibilities that JavaScript often presents through one
+package-manager CLI.
+
+| Tool               | Primary responsibility                                           |
+| ------------------ | ---------------------------------------------------------------- |
+| [pip](./pip)       | Install distributions into a Python environment                  |
+| [uv](./uv)         | Manage projects, environments, Python versions, locks, and tools |
+| [Poetry](./poetry) | Manage projects, dependency locks, builds, and publishing        |
+
+For a new application, prefer one project manager—usually uv—or preserve Poetry when the repository
+already uses it successfully. Do not maintain both `uv.lock` and `poetry.lock` as competing sources
+of dependency truth.
+
+See [publishing Python packages](./package-publishing) for the build frontend/backend distinction,
+wheels and source distributions, TestPyPI, PyPI, trusted publishing, and release verification.

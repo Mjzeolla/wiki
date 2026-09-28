@@ -1,0 +1,43 @@
+---
+title: Class Variance Authority
+description: Defining typed, reusable CSS-class variants for component APIs.
+tags:
+  - cva
+  - react
+  - component-libraries
+status: growing
+aliases:
+  - class-variance-authority
+sources:
+  - https://cva.style/docs
+---
+
+Class Variance Authority (CVA) maps semantic component props to class strings. A button can expose
+`intent="danger"` and `size="small"` instead of spreading conditional class logic through JSX.
+
+## Why use it
+
+CVA centralizes base classes, variants, defaults, and compound variants. Its TypeScript helpers can
+derive the component's variant prop types, keeping the public React API synchronized with its style
+definition.
+
+## Use it when
+
+- reusable components expose finite variants such as intent, size, tone, or density;
+- compound combinations are becoming nested conditions; or
+- a design system needs consistent typed variant contracts across components.
+
+## Avoid or limit it when
+
+Skip CVA for one-off elements, components with no meaningful variants, or values that are genuinely
+dynamic rather than a finite design-system choice. Do not turn every CSS difference into a public
+variant.
+
+## How it relates to the other utilities
+
+- CVA selects classes from a declared component variant model.
+- `clsx` joins arbitrary conditional class inputs.
+- `tailwind-merge` resolves conflicting Tailwind utilities after composition.
+
+A component library may use all three because they solve different problems, but a typical
+application should add them only as those responsibilities appear.

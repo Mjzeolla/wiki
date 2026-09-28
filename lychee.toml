@@ -1,0 +1,9 @@
+cache = true
+max_cache_age = "1d"
+max_retries = 2
+timeout = 20
+user_agent = "Personal-Wiki-Link-Checker/1.0"
+accept = [200, 204, 206, 429]
+scheme = ["http", "https"]
+exclude_path = ["node_modules", ".next", ".source", ".git"]
+exclude = ["^http://localhost(:[0-9]+)?/"]

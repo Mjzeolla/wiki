@@ -1,0 +1,63 @@
+---
+title: Terminal and Shell
+description: Choose a terminal deliberately and keep shell configuration fast and portable.
+tags:
+  - terminal
+  - zsh
+  - macos
+status: growing
+---
+
+macOS already includes Terminal and Zsh. Replace the terminal emulator only when you want better
+rendering, tabs and splits, keyboard workflow, configuration, or cross-platform behavior.
+
+## A practical default
+
+[Ghostty](https://ghostty.org/docs) is a strong default for a personal developer Mac: it uses a
+native macOS interface, GPU rendering, and useful defaults. The project provides signed and
+notarized macOS builds; its Homebrew cask repackages that official binary:
+
+```bash
+brew install --cask ghostty
+```
+
+Use Apple's Terminal if simplicity and zero extra dependencies matter more. Choose WezTerm when a
+Lua-configured, cross-platform terminal is more valuable. Avoid turning the terminal, shell,
+prompt, multiplexer, and editor into one inseparable configuration unless that coupling is
+intentional.
+
+## Shell layers
+
+```text
+terminal emulator  windows, tabs, rendering, key bindings
+zsh                shell language, completion, aliases, functions
+prompt             compact repository and runtime context
+multiplexer        persistent remote or long-running sessions, when needed
+```
+
+Prefer small files sourced from `.zshrc` over one large dump:
+
+```text
+~/.config/zsh/
+├── aliases.zsh
+├── completion.zsh
+├── environment.zsh
+├── functions/
+└── integrations/
+```
+
+Measure shell startup before adding a framework. Plugins that run subprocesses on every prompt can
+make every terminal feel slow. Keep secrets out of shell files; load them from a password manager
+or a scoped secret system.
+
+## Useful baseline tools
+
+```bash
+brew install git gh ripgrep fd fzf jq yq bat eza zoxide
+```
+
+Install only the commands you use. Learn their unaliased forms first, and avoid aliases that make
+destructive commands more aggressive.
+
+Continue with [command history and navigation](./command-history-and-navigation) to configure durable
+Zsh history, fuzzy `Control-R` search, contextual Atuin history, and directory jumping with zoxide.

@@ -1,0 +1,4 @@
+{
+  "title": "Linting and Quality",
+  "pages": ["index", "additional-quality", "eslint", "markdownlint"]
+}

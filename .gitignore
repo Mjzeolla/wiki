@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.source/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+pnpm-debug.log*
+.lycheecache

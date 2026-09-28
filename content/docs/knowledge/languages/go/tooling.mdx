@@ -1,0 +1,36 @@
+---
+title: Go Tooling
+description: The Go command, formatting, linting, profiling, modules, and developer tooling.
+tags:
+  - go
+  - tooling
+status: growing
+sources:
+  - https://go.dev/doc/cmd
+  - https://go.dev/doc/diagnostics
+  - https://go.dev/ref/mod
+---
+
+The Go distribution includes most of the everyday build, formatting, dependency, testing, analysis,
+documentation, and profiling workflow.
+
+| Command                  | Responsibility                                       |
+| ------------------------ | ---------------------------------------------------- |
+| `go fmt ./...`           | Apply canonical formatting                           |
+| `go vet ./...`           | Report suspicious constructs through static analysis |
+| `go test ./...`          | Compile packages and run tests                       |
+| `go test -race ./...`    | Instrument tests for data-race detection             |
+| `go test -cover ./...`   | Measure test execution coverage                      |
+| `go test -bench=. ./...` | Run benchmarks                                       |
+| `go mod tidy`            | Align module requirements and checksums with imports |
+| `go mod verify`          | Verify cached module content against checksums       |
+| `go list -m -u all`      | Inspect available module updates                     |
+| `go tool pprof`          | Analyze CPU, heap, and other runtime profiles        |
+| `go doc`                 | Read package and symbol documentation                |
+
+Add Staticcheck or a deliberately configured golangci-lint when broader analysis has a good signal-
+to-noise ratio. Add `govulncheck` for reachable vulnerability analysis. Pin external tools through
+Mise or an explicit tools module rather than relying on whatever happens to be globally installed.
+
+Profiles are measurements, not decorations. Capture CPU, heap, block, mutex, goroutine, or execution
+trace data for a concrete question, and account for profiler overhead when observing production.

@@ -1,0 +1,23 @@
+---
+title: Poetry
+description: Python dependency management, isolated environments, locking, building, and publishing.
+tags:
+  - python
+  - poetry
+status: growing
+sources:
+  - https://python-poetry.org/docs/
+  - https://python-poetry.org/docs/basic-usage/
+---
+
+Poetry manages project metadata, dependencies, virtual environments, dependency groups, a
+`poetry.lock` lockfile, package builds, and publishing.
+
+Prefer Poetry when an established repository or organization already relies on it, or when its
+packaging and plugin workflow provides concrete value. Preserve a healthy Poetry project rather than
+migrating only because uv is newer or faster.
+
+For a new service, compare Poetry with uv against the project's actual needs. Choose one owner for
+dependency resolution and locking; do not update both `poetry.lock` and `uv.lock`. Use `poetry build`
+to create distributions and `poetry publish` only within an intentional release workflow with
+appropriately scoped registry credentials.

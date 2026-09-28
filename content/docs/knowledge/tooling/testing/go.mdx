@@ -1,0 +1,42 @@
+---
+title: Testing Go
+description: Table tests, testdata, HTTP harnesses, fuzzing, race detection, and shared support in Go.
+tags:
+  - go
+  - testing
+status: growing
+sources:
+  - https://go.dev/doc/tutorial/add-a-test
+  - https://go.dev/doc/security/fuzz/
+---
+
+Use Go's standard `testing` package as the foundation. Co-locate unit tests in `*_test.go`; choose the
+same package for internal behavior or an external `_test` package when enforcing the public API is
+valuable.
+
+```text
+internal/order/
+├── service.go
+├── service_test.go
+└── testdata/
+    └── invalid-order.json
+internal/testsupport/
+├── builders/
+├── fakes/
+└── testdb/
+tests/
+├── integration/
+└── contract/
+```
+
+Go ignores `testdata/` as a package, making it the natural owner for feature fixtures and golden
+files. Create `internal/testsupport` only after multiple packages share stable helpers.
+
+- Use table-driven tests when cases share behavior and assertions.
+- Mark helpers with `t.Helper()` and cleanup with `t.Cleanup()`.
+- Use `t.TempDir()` for filesystem state and `httptest` for handlers or servers.
+- Parallelize only when every dependency and loop value is isolated.
+- Prefer direct assertions or `go-cmp`; add Testify `require` when it materially improves clarity.
+- Prefer small interfaces and handwritten fakes over broad generated mocks.
+- Fuzz parsers, decoders, and invariants.
+- Run `go test ./...`; use `go test -race` where concurrency risk warrants the cost.

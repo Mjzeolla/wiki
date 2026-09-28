@@ -1,0 +1,28 @@
+---
+title: Concepts
+description: Cross-language and cross-platform technical ideas.
+tags:
+  - concepts
+status: growing
+---
+
+This section owns ideas whose meaning survives a change of language, framework, or platform. Keep
+technology-specific mechanics with their narrower owner and link here for the shared mental model.
+
+## Useful cross-cutting concepts
+
+| Concept                     | Question it answers                                               |
+| --------------------------- | ----------------------------------------------------------------- |
+| Boundaries and ownership    | Which component owns this rule, state, and lifecycle?             |
+| Contracts and compatibility | What may consumers rely on, and how can it evolve safely?         |
+| State and transitions       | What states are valid, and which operations move between them?    |
+| Identity and idempotency    | How are repeated or ambiguous operations recognized safely?       |
+| Time and ordering           | Which ordering guarantees exist across concurrency or retries?    |
+| Caching and freshness       | Who owns the source value, and how stale may a copy become?       |
+| Failure domains             | Which faults can occur independently, and what survives each one? |
+| Backpressure                | How does a producer respond when a consumer cannot keep up?       |
+| Observability               | What evidence explains whether the system is behaving correctly?  |
+
+When adding a concept page, define the invariant or model first, include a counterexample or common
+misunderstanding, and connect it to concrete language or platform pages. Avoid a generic page when
+the concept has materially different semantics in one specific system.

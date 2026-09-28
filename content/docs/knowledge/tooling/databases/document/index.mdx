@@ -1,0 +1,64 @@
+---
+title: MongoDB Compass and mongosh
+description: Choose MongoDB's GUI and shell for document, query, aggregation, and index work.
+tags:
+  - databases
+  - mongodb
+  - compass
+status: growing
+sources:
+  - https://www.mongodb.com/docs/compass/
+  - https://www.mongodb.com/docs/mongodb-shell/
+---
+
+## MongoDB Compass
+
+[MongoDB Compass](https://www.mongodb.com/docs/compass/) is MongoDB's desktop client for exploring
+documents, schemas, indexes, queries, aggregations, and query plans. It is useful when document shape
+varies or a visual aggregation pipeline makes behavior easier to inspect.
+
+Verify the current Homebrew cask or install the signed application from MongoDB:
+
+```bash
+brew info --cask mongodb-compass
+brew install --cask mongodb-compass
+```
+
+Use Compass to sample schema shape rather than assuming sampled fields describe every document. Set
+limits before opening large collections, inspect explain plans for important queries, and keep
+production connections visually distinct and read-only by default.
+
+## mongosh
+
+[`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) is the scriptable MongoDB shell. Prefer it
+for repeatable diagnostics, runbooks, automation, and exact reproduction of a query outside an
+application. Store reviewed scripts in the repository rather than relying on an untracked shell
+history entry.
+
+Connection strings frequently contain usernames, hosts, options, and sometimes passwords. Avoid
+placing credentials directly on the command line. The Compass documentation also recommends using a
+configuration file rather than a sensitive URI when launching Compass from a terminal.
+
+## Choosing between them
+
+| Need                                        | Prefer  |
+| ------------------------------------------- | ------- |
+| Explore unknown document shapes visually    | Compass |
+| Build an aggregation pipeline interactively | Compass |
+| Produce a reproducible diagnostic           | mongosh |
+| Run in a terminal-only environment          | mongosh |
+| Review indexes and explain plans visually   | Compass |
+| Version a maintenance script                | mongosh |
+
+Neither tool replaces application migrations, reviewed index changes, backups, or production change
+controls. Confirm the active database and collection before a write, and use a least-privilege MongoDB
+role for routine exploration.
+
+## Official references
+
+- [Compass documentation](https://www.mongodb.com/docs/compass/) for connections, queries,
+  aggregations, schema analysis, indexes, and explain plans.
+- [Install Compass](https://www.mongodb.com/docs/compass/install/) for current macOS requirements and
+  packages.
+- [MongoDB Shell](https://www.mongodb.com/docs/mongodb-shell/) for installation, connections,
+  scripting, and command reference.

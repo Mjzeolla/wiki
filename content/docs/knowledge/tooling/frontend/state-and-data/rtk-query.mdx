@@ -1,0 +1,64 @@
+---
+title: RTK Query
+description: Redux Toolkit's integrated server-state fetching and caching layer.
+tags:
+  - react
+  - redux
+  - data-fetching
+status: growing
+sources:
+  - https://redux-toolkit.js.org/rtk-query/overview
+  - https://redux-toolkit.js.org/rtk-query/usage/cache-behavior
+  - https://redux-toolkit.js.org/rtk-query/usage/automated-refetching
+---
+
+[RTK Query](https://redux-toolkit.js.org/rtk-query/overview) is Redux Toolkit's optional data-fetching
+and caching layer. It ships in `@reduxjs/toolkit`, stores its cache in Redux, and can generate React
+hooks from declarative endpoint definitions.
+
+## Choose RTK Query when
+
+- Redux Toolkit is already a deliberate foundation of the application;
+- one Redux DevTools and middleware model should cover client and server state;
+- tag-based cache invalidation fits the API's resource relationships; or
+- endpoint definitions and generated hooks should be shared across features.
+
+If the application does not otherwise need Redux, [TanStack Query](./tanstack-query) usually has a
+smaller architectural commitment. Do not adopt Redux only to gain query caching without first
+comparing the standalone alternative and framework-native data features.
+
+## Recommended boundaries
+
+Define a small number of API slices around base URLs or cross-cutting API concerns. Inject or group
+endpoints by domain instead of creating an unrelated API instance for every resource.
+
+```text
+src/
+├── app/
+│   └── store/
+│       └── store.ts
+├── shared/
+│   └── api/
+│       ├── base-api.ts
+│       └── base-query.ts
+└── domains/
+    └── projects/
+        └── api/
+            ├── endpoints.ts
+            └── types.ts
+```
+
+- Give every query's arguments stable, serializable meaning.
+- Model tags around resource identity so mutations invalidate the narrowest correct data.
+- Prefer generated hooks for component integration.
+- Keep transport and generated API types separate from domain models when their lifecycles differ.
+- Test endpoint behavior and invalidation without asserting RTK Query internals.
+
+RTK Query deduplicates active subscriptions and retains cached data according to its cache settings.
+Read the official cache behavior before changing retention or refetch defaults.
+
+## Avoid two owners
+
+Do not use RTK Query and TanStack Query against the same resource set unless an explicit migration
+boundary exists. They cannot automatically share cached values or invalidation, so the UI may show
+different versions of the same server resource.

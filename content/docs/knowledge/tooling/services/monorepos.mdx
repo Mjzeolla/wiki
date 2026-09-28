@@ -1,0 +1,26 @@
+---
+title: Monorepo Orchestration
+description: Choosing workspace and task-graph tools for multi-package repositories.
+tags:
+  - monorepos
+  - tooling
+status: growing
+sources:
+  - https://pnpm.io/workspaces
+  - https://turborepo.com/docs
+  - https://nx.dev/docs
+  - https://docs.astral.sh/uv/concepts/projects/workspaces/
+---
+
+| Technology      | Why it exists                               | Use it when                                                  |
+| --------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| pnpm workspaces | Link and manage related JavaScript packages | Packages share one JavaScript dependency boundary            |
+| Turborepo       | Run and cache declared package task graphs  | Task orchestration or affected builds save meaningful time   |
+| Nx              | Model and enforce a richer project graph    | A large workspace needs generators, graph rules, and tooling |
+| uv workspaces   | Coordinate related Python projects          | Python packages share compatible development and releases    |
+| `go work`       | Develop several Go modules together locally | Independent Go modules genuinely need coordinated changes    |
+
+Start without a task orchestrator when normal workspace commands are sufficient. Caching is correct
+only when task inputs, environment, dependencies, and outputs are declared accurately. A monorepo
+should still keep deployable applications in `apps/` and reusable packages in `packages/` rather
+than turning `shared` into an unowned dependency sink.

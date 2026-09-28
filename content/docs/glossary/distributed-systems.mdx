@@ -1,0 +1,62 @@
+---
+title: Distributed Systems Glossary
+description: Definitions for distributed systems terminology.
+tags:
+  - distributed-systems
+  - glossary
+status: growing
+---
+
+## Core terms
+
+**Availability**
+: The ability to return a usable response when requested. Define the measurement window and whether
+degraded or stale responses count as available.
+
+**Consensus**
+: A protocol through which distributed participants agree on an ordered value or state despite
+failures. Consensus does not mean every replica is continuously identical.
+
+**Consistency model**
+: The guarantees a system gives about which writes a read may observe. Examples include linearizable,
+sequential, causal, and eventual consistency.
+
+**Idempotency**
+: A property where repeating an operation with the same identity has the same intended effect as
+performing it once. Safe retries usually require an idempotency key plus durable result tracking,
+not merely an HTTP verb.
+
+**Leader election**
+: Selecting one participant to coordinate a term or epoch. Correct systems fence stale leaders so an
+old leader cannot continue mutating state after replacement.
+
+**Partition**
+: A communication failure that prevents some participants from reliably reaching others while the
+participants may remain otherwise healthy.
+
+**Quorum**
+: The minimum voting set required for an operation. Intersecting read and write quorums can ensure
+operations observe overlapping replicas, depending on the protocol.
+
+**Replication**
+: Maintaining copies of data or a log on multiple participants. Replication improves availability or
+read scale but does not replace an independently protected backup.
+
+**Split brain**
+: Multiple participants act as the authoritative leader for overlapping state. Quorum, epochs, and
+fencing are common prevention mechanisms.
+
+**Timeout**
+: A local decision to stop waiting. A timeout does not prove the remote operation failed; it may have
+completed, making retry identity and reconciliation important.
+
+**At-least-once delivery**
+: A message may be delivered repeatedly but should not be silently lost under the stated guarantees.
+Consumers must tolerate duplicates.
+
+**At-most-once delivery**
+: A message is delivered zero or one time. Avoiding duplicates may allow loss when delivery outcome
+is uncertain.
+
+When a term needs examples, diagrams, or comparisons, promote it into a focused child page and link
+back to this glossary definition.

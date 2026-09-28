@@ -1,0 +1,28 @@
+---
+title: classnames
+description: An established utility for conditionally joining CSS class names.
+tags:
+  - classnames
+  - react
+  - css
+status: growing
+sources:
+  - https://github.com/JedWatson/classnames
+---
+
+## Why use it
+
+`classnames` provides a mature API for combining conditional class values. Its role is essentially
+the same as `clsx`.
+
+## Use it when
+
+- an existing codebase already standardizes on it;
+- a dependency or shared convention expects its API; or
+- changing to `clsx` provides no material benefit.
+
+## Avoid or limit it when
+
+For a new application, `clsx` is commonly the smaller starting choice. Do not migrate solely for
+fashion, and do not keep both packages without distinct consumers. Like `clsx`, `classnames` does
+not resolve conflicting Tailwind utilities.

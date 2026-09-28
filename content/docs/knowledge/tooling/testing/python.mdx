@@ -1,0 +1,41 @@
+---
+title: Testing Python
+description: pytest structure, fixture ownership, integration boundaries, and property-based testing.
+tags:
+  - python
+  - pytest
+  - testing
+status: growing
+sources:
+  - https://docs.pytest.org/en/stable/
+  - https://hypothesis.readthedocs.io/
+---
+
+Use pytest for new unit and integration suites unless the repository already has an effective
+unittest convention.
+
+```text
+src/example/domains/orders/
+tests/
+├── unit/orders/
+├── integration/orders/
+├── contract/
+├── fixtures/files/
+└── support/
+    ├── builders/
+    ├── factories/
+    └── fakes/
+```
+
+Keep `conftest.py` at the narrowest directory that needs its fixtures. A root conftest full of
+feature-specific fixtures creates invisible global coupling.
+
+- Parameterize meaningful input partitions rather than copying test bodies.
+- Use temporary paths, deterministic clocks, and explicit environment fixtures.
+- Prefer injected dependencies, protocol fakes, or small adapters over deep patching.
+- When patching is necessary, patch the name used by the system under test.
+- Mark real database or service tests and make their setup reproducible.
+- Test FastAPI and ASGI applications through an HTTP client rather than calling route functions.
+- Use Hypothesis for parsers, serialization, state machines, and durable invariants.
+
+Coverage reveals untested surfaces but cannot prove that assertions are meaningful.

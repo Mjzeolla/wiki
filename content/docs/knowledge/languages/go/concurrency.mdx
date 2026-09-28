@@ -1,0 +1,232 @@
+---
+title: Go Concurrency
+description: Goroutines, channels, contexts, synchronization, cancellation, and ownership.
+tags:
+  - go
+  - concurrency
+status: growing
+---
+
+Concurrency is a way to structure work that can make progress independently. It is not automatically
+parallel, faster, or safe. Every goroutine needs an owner, a stopping condition, and a way for its
+result or failure to become observable.
+
+## Start with ownership
+
+Before writing `go f()`, answer:
+
+- Who starts this goroutine?
+- Who waits for it or observes its result?
+- What cancels it when the caller no longer needs the work?
+- Which goroutine owns each channel and shared value?
+- Is concurrency bounded under peak input?
+
+A goroutine whose lifetime is not tied to an application, request, worker, or other explicit owner
+is easy to leak. Returning from the parent function does not stop child goroutines.
+
+## Goroutines are not synchronization
+
+The `go` statement schedules a function independently:
+
+```go
+go refreshCache()
+```
+
+It does not guarantee that `refreshCache` finishes, publish its writes safely, or propagate a panic
+or error to the caller. If another goroutine must observe its work, establish synchronization with
+a channel, `sync.WaitGroup`, mutex, atomic operation, or a higher-level abstraction.
+
+The [Go memory model](https://go.dev/ref/mem) defines the relevant _happens-before_ relationships.
+The practical rule is simpler: concurrent access that includes a write must be serialized. Do not
+rely on timing, sleeps, or the assumption that a machine performs a small read or write atomically.
+
+## Channels transfer values and coordinate ownership
+
+Channels are most useful when work or ownership moves between goroutines:
+
+```go
+func generate(ctx context.Context, values []int) <-chan int {
+ out := make(chan int)
+
+ go func() {
+  defer close(out)
+
+  for _, value := range values {
+   select {
+   case out <- value:
+   case <-ctx.Done():
+    return
+   }
+  }
+ }()
+
+ return out
+}
+```
+
+Important ownership rules:
+
+- The sender normally closes the channel because only the sender knows that no more values exist.
+- Receivers normally do not close a channel.
+- Closing broadcasts completion; it is not required for garbage collection.
+- Sending on a closed channel panics. Closing an already closed channel also panics.
+- Receiving from a closed channel first drains buffered values, then returns the zero value with
+  `ok == false`.
+- A `nil` channel blocks forever. This can deliberately disable a `select` case, but accidental nil
+  channels are a common deadlock source.
+
+### Buffered versus unbuffered
+
+An unbuffered send completes only when a receiver participates, which provides direct handoff and
+backpressure. A buffered channel allows a limited number of sends to proceed independently.
+
+Choose buffer capacity from a real constraint—such as the permitted queue depth or concurrency
+limit—not as a guess intended to hide blocking. A larger buffer can postpone overload without
+solving it.
+
+## Cancellation belongs in the call tree
+
+Pass `context.Context` as the first parameter to work that crosses API boundaries, performs I/O, or
+may need cancellation:
+
+```go
+func loadProfile(ctx context.Context, id string) (Profile, error) {
+ ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+ defer cancel()
+
+ return repository.LoadProfile(ctx, id)
+}
+```
+
+Derived contexts form a tree: canceling a parent cancels its descendants. Always call the returned
+cancel function, even when a timeout is expected to expire, so timers and related resources are
+released promptly.
+
+Use context values only for request-scoped data that crosses process or API boundaries, such as a
+trace identifier. Do not use them as optional function parameters or dependency injection. Do not
+store a context in a struct unless the API genuinely requires a lifetime that cannot be expressed
+per operation.
+
+Long-running or channel-blocked code must observe cancellation explicitly:
+
+```go
+select {
+case result := <-results:
+ return result, nil
+case <-ctx.Done():
+ return Result{}, ctx.Err()
+}
+```
+
+The standard [`context` documentation](https://pkg.go.dev/context) is authoritative; the Go team's
+[context pattern guide](https://go.dev/blog/context) explains the ownership model.
+
+## Waiting and error propagation
+
+Use `sync.WaitGroup` when several goroutines must finish and none returns an error to the group:
+
+```go
+var wg sync.WaitGroup
+
+for _, job := range jobs {
+ job := job
+ wg.Add(1)
+
+ go func() {
+  defer wg.Done()
+  process(job)
+ }()
+}
+
+wg.Wait()
+```
+
+When sibling operations form one task and any failure should cancel the rest, use
+[`errgroup.WithContext`](https://pkg.go.dev/golang.org/x/sync/errgroup). `SetLimit` can bound active
+goroutines. Keep the first meaningful error and ensure each worker observes the derived context.
+
+Do not use a bare goroutine when the caller needs the error: a discarded return value is not error
+handling.
+
+## Mutex, channel, or atomic?
+
+Choose the primitive that matches the ownership model:
+
+| Primitive        | Prefer it for                                                        |
+| ---------------- | -------------------------------------------------------------------- |
+| Channel          | Transferring work, streaming values, coordination, and backpressure  |
+| `sync.Mutex`     | Protecting a small invariant over shared in-memory state             |
+| `sync.RWMutex`   | Read-heavy state only after measurement shows ordinary locking hurts |
+| `sync.Once`      | One-time initialization with concurrent callers                      |
+| `sync.WaitGroup` | Waiting for a known set of goroutines                                |
+| `sync/atomic`    | Small, proven lock-free state transitions                            |
+
+A mutex is often clearer than creating a manager goroutine solely to own a map. Keep the protected
+state and mutex together, minimize the critical section, and document the invariant rather than
+exposing the lock to callers.
+
+Atomics are not a general replacement for locks. They work best for counters, flags, and compact
+state machines whose complete correctness can be explained in terms of atomic operations.
+
+## Bound concurrency
+
+Starting one goroutine per input is unsafe when input size is unbounded. Use a fixed worker pool,
+an `errgroup` limit, or a semaphore with a capacity derived from the constrained resource:
+
+- CPU-bound work: begin near the available CPU parallelism and measure.
+- Remote calls: respect upstream concurrency and rate limits.
+- Database work: stay within the connection pool and transaction constraints.
+- Memory-heavy work: bound by peak per-task memory, not only CPU count.
+
+Backpressure should reach the producer. An unbounded slice or queue in front of a fixed worker pool
+still permits unbounded memory growth.
+
+## Common failure modes
+
+| Symptom                      | Likely cause                                                        |
+| ---------------------------- | ------------------------------------------------------------------- |
+| Test hangs                   | Blocked send or receive, missing close, or wait cycle               |
+| Goroutine count grows        | Abandoned worker, unread result, missing cancellation, or stuck I/O |
+| Intermittent corrupt state   | Unsynchronized shared memory or incomplete locking invariant        |
+| Shutdown never completes     | Background work has no owner, cancellation path, or bounded timeout |
+| Results disappear on failure | Error or panic is trapped in an unobserved goroutine                |
+| Throughput collapses at load | Unbounded fan-out, lock contention, or downstream saturation        |
+
+Never add `time.Sleep` to make a concurrency test pass. Synchronize on the event the test actually
+cares about.
+
+## Testing concurrent code
+
+Run ordinary tests and the race detector:
+
+```bash
+go test ./...
+go test -race ./...
+```
+
+The [race detector](https://go.dev/doc/articles/race_detector) observes only code paths exercised at
+runtime, so combine it with meaningful unit and integration workloads. A race-free program can
+still deadlock, leak goroutines, violate ordering, or mishandle cancellation.
+
+Prefer deterministic test seams:
+
+- inject clocks or timers rather than sleeping;
+- use channels or fakes to signal that a worker reached a state;
+- cancel the parent context and assert that workers return;
+- test full and blocked queues where backpressure matters;
+- assert goroutine termination indirectly through owned completion signals;
+- fuzz state machines or protocol parsers separately from scheduling-sensitive orchestration.
+
+## Review checklist
+
+- Every goroutine has an owner and a termination path.
+- Concurrent work has a deliberate limit.
+- The sender owns channel closure.
+- Blocking sends and receives can be canceled when their parent can stop early.
+- Shared mutable state is consistently protected.
+- Errors reach the caller or supervising component.
+- Shutdown waits for owned work without waiting forever.
+- Tests exercise cancellation, saturation, and failure paths under `-race`.
+
+See [Go pipelines and cancellation](https://go.dev/blog/pipelines) for a complete example of stopping
+upstream goroutines when a downstream consumer exits early.

@@ -1,0 +1,24 @@
+---
+title: uv
+description: Fast Python project, environment, runtime, dependency, tool, build, and publishing management.
+tags:
+  - python
+  - uv
+status: growing
+sources:
+  - https://docs.astral.sh/uv/
+  - https://docs.astral.sh/uv/getting-started/features/
+---
+
+uv can manage Python versions, virtual environments, project dependencies, lockfiles, workspaces,
+standalone tools, builds, and uploads to package indexes. It also provides a pip-compatible interface
+for workflows that still use requirements files.
+
+Prefer uv for a new Python application or service when one fast tool should own dependency
+resolution, environments, command execution, locking, and workspace behavior. Commit `uv.lock` for
+projects that require reproducible environments and use `uv sync --frozen` in CI when changes to the
+lockfile must fail rather than resolve implicitly.
+
+Do not introduce uv beside Poetry without an explicit migration. A repository needs one dependency
+and lockfile owner. The selected build backend remains responsible for the contents and metadata of
+published wheels and source distributions, even when `uv build` invokes it.

@@ -1,0 +1,75 @@
+---
+title: OpenSearch Indexing
+description: Index mappings, analyzers, ingestion, lifecycle, and document updates.
+tags:
+  - opensearch
+  - indexing
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/field-types/
+  - https://docs.opensearch.org/latest/analyzers/index-analyzers/
+  - https://docs.opensearch.org/latest/api-reference/document-apis/bulk/
+  - https://docs.opensearch.org/latest/im-plugin/ism/index/
+---
+
+Index design determines what OpenSearch can answer efficiently. Define the document around retrieval
+and aggregation needs rather than mirroring normalized database tables.
+
+## Mappings
+
+Choose field types deliberately:
+
+- `text` fields are analyzed for full-text search;
+- `keyword` fields retain exact values for filtering, sorting, and aggregations;
+- numeric, date, boolean, IP, geo, and vector fields enable type-specific queries; and
+- objects and nested fields model structured values, but nested documents add query and storage cost.
+
+Dynamic mapping is convenient during exploration but can silently infer the wrong type or create
+unbounded fields. Production indexes should use explicit mappings or controlled dynamic templates,
+and should cap or reject unexpected fields when payload shape is not trusted. Use the official
+[field-type reference](https://docs.opensearch.org/latest/field-types/) for exact mapping parameters
+instead of reproducing the complete type catalog here.
+
+## Analysis
+
+An analyzer is a character-filter, tokenizer, and token-filter pipeline. Index-time and query-time
+analysis must produce compatible terms. Test analyzer behavior with the Analyze API before indexing
+large datasets, especially for language-specific stemming, synonyms, identifiers, autocomplete, and
+case normalization.
+
+A common pattern maps user-visible prose as `text` and adds a `keyword` multi-field for exact
+operations. Do not aggregate on analyzed text when an exact-value representation is intended.
+
+## Writes and updates
+
+Document updates create a new Lucene document version and mark the old version for later segment
+merging; they are not in-place row updates. Use stable IDs for idempotent indexing and optimistic
+concurrency controls when multiple writers can race.
+
+Use the Bulk API for sustained ingestion, but bound batch bytes and concurrency. An HTTP-successful
+bulk response can still contain individual item failures, so inspect every item and retry only
+retryable failures with backoff.
+
+## Lifecycle
+
+Use index aliases or data streams to keep writers independent of physical index generations. Apply
+Index State Management when indexes need time- or size-based rollover, read-only transitions,
+retention, or deletion. Mapping changes that cannot be applied in place require a new index,
+reindexing, validation, and an alias cutover.
+
+Measure indexing latency, rejected writes, refresh and merge pressure, shard size, mapping growth,
+and disk watermarks. Faster refresh makes documents searchable sooner but increases indexing cost;
+choose it from product freshness requirements rather than habit.
+
+## Official references
+
+- [Field types](https://docs.opensearch.org/latest/field-types/) for mapping choices and type-specific
+  options.
+- [Index analyzers](https://docs.opensearch.org/latest/analyzers/index-analyzers/) for analyzer
+  precedence and index-time configuration.
+- [Bulk API](https://docs.opensearch.org/latest/api-reference/document-apis/bulk/) for request framing,
+  response items, and endpoint parameters.
+- [Index State Management](https://docs.opensearch.org/latest/im-plugin/ism/index/) for policies,
+  rollover, transitions, and retention.
+- [Index aliases](https://docs.opensearch.org/latest/im-plugin/index-alias/) for stable names across
+  index generations.

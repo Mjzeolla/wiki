@@ -1,0 +1,27 @@
+---
+title: Vitest
+description: Vite-native unit and integration testing for TypeScript applications.
+tags:
+  - vitest
+  - testing
+  - typescript
+status: growing
+sources:
+  - https://vitest.dev/guide/
+---
+
+## Why use it
+
+Vitest offers a Jest-like test API while sharing Vite's transformation and configuration model. It
+handles TypeScript and modern modules with a fast development loop.
+
+## Use it when
+
+- a Vite-based frontend needs unit or component tests;
+- a modern TypeScript service benefits from its runner and mocking API; or
+- tests should reuse Vite aliases and plugins.
+
+## Avoid or limit it when
+
+Node's built-in runner may be enough for a small library or service. Preserve Jest when an established
+suite relies on its ecosystem and migration would not improve behavior or maintenance.

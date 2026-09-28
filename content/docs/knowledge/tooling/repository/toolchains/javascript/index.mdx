@@ -1,0 +1,17 @@
+---
+title: JavaScript and TypeScript Toolchains
+description: Package managers, lockfiles, workspaces, and publishing for Node-based repositories.
+---
+
+Choose one package manager as the dependency and lockfile owner. Record that choice with the
+`packageManager` field in `package.json`, commit its lockfile, and use the same version in local and
+CI environments.
+
+| Tool           | Prefer it when                                                         |
+| -------------- | ---------------------------------------------------------------------- |
+| [npm](./npm)   | Node's bundled default and broad platform compatibility are sufficient |
+| [pnpm](./pnpm) | Strict dependency access, efficient storage, or workspaces add value   |
+
+Use [JavaScript package publishing](./package-publishing) when a library must be released to npm or
+another compatible registry. Applications that are only deployed do not need package-publishing
+configuration.

@@ -1,0 +1,29 @@
+---
+title: pnpm
+description: A disk-efficient JavaScript package manager with strict dependency access and workspaces.
+tags:
+  - pnpm
+  - javascript
+status: growing
+sources:
+  - https://pnpm.io/motivation
+  - https://pnpm.io/workspaces
+---
+
+## Why use it
+
+pnpm stores package content centrally, links it into projects, and prevents packages from silently
+importing undeclared dependencies. Its workspace support is a strong default for JavaScript
+monorepos.
+
+## Use it when
+
+- starting a Node or TypeScript repository without a mandated package manager;
+- managing several related packages with one lockfile; or
+- reproducible, locked installs and explicit dependency ownership matter.
+
+## Avoid or limit it when
+
+Preserve npm, Yarn, or Bun when an existing repository and delivery platform already rely on it.
+Do not commit multiple competing JavaScript lockfiles. Invoke a package script named `ci` as
+`pnpm run ci`; `pnpm ci` is an install command.

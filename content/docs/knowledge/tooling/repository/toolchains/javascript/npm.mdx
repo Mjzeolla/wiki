@@ -1,0 +1,27 @@
+---
+title: npm
+description: Node's default package manager, registry client, script runner, and package publisher.
+tags:
+  - npm
+  - javascript
+  - node
+status: growing
+sources:
+  - https://docs.npmjs.com/about-npm
+  - https://docs.npmjs.com/cli/commands/npm-ci
+---
+
+npm ships with Node.js and manages dependencies, the `package-lock.json` lockfile, package scripts,
+workspaces, registry authentication, and publishing.
+
+## Use it when
+
+- the repository wants the Node default with minimal bootstrap requirements;
+- hosting, release, or contributor workflows already standardize on npm; or
+- pnpm or Yarn features would not provide enough benefit to justify another tool.
+
+Use `npm ci` in CI when the committed lockfile must be installed without modification. Use
+`npm run <script>` for repository commands and `npm exec <binary>` for dependency-provided CLIs.
+
+Do not commit competing npm, pnpm, and Yarn lockfiles. npm's ubiquity is a useful default, but it is
+not a reason to migrate a healthy established package-manager workflow.

@@ -1,0 +1,47 @@
+---
+title: CI/CD and Quality Gates
+description: Designing repository checks, workflows, artifacts, and deployment boundaries.
+tags:
+  - ci-cd
+  - github-actions
+  - quality
+status: growing
+---
+
+Continuous integration proves that a proposed change is buildable, tested, and consistent from a
+clean environment. Continuous delivery prepares a releasable artifact. Continuous deployment also
+changes an environment and therefore needs explicit ownership, permissions, approvals, and rollback.
+
+## Add checks because a maintained surface needs them
+
+| Check             | Add it when                                         | Typical placement                          |
+| ----------------- | --------------------------------------------------- | ------------------------------------------ |
+| Formatting        | Source or documentation must be deterministic       | Pre-commit and CI                          |
+| Type checking     | The language provides useful static contracts       | Pre-commit when fast; always CI            |
+| Unit tests        | Executable behavior exists                          | Pre-commit or pre-push; always CI          |
+| Integration tests | Real adapters or infrastructure carry material risk | CI with isolated dependencies              |
+| Playwright        | Critical browser journeys require a real browser    | CI with traces and screenshots on failure  |
+| Markdownlint      | Markdown or MDX is maintained as a product surface  | Pre-commit and CI                          |
+| Lychee            | Documentation contains maintained links             | Local links in hooks; external links in CI |
+| ShellCheck        | Repository-owned shell scripts exist                | Pre-commit or CI                           |
+| actionlint        | GitHub Actions workflows exist                      | CI and optionally pre-commit               |
+| yamllint          | YAML volume justifies shared style rules            | CI                                         |
+| Secret scanning   | Credential exposure needs preventive detection      | Fast local checks and authoritative CI     |
+| Production build  | The repository ships a generated artifact           | CI                                         |
+
+Keep required checks behind one locally runnable aggregate such as `make ci` or
+`scripts/ci/check`. CI should call that entrypoint after a locked clean install rather than
+reimplementing every command in YAML.
+
+## Pipeline shape
+
+1. Install pinned tools and locked dependencies.
+2. Run formatting validation, linting, static types, and fast tests.
+3. Run required integration, contract, and end-to-end suites.
+4. Build the actual package, site, binary, image, or generated artifact.
+5. Inspect or smoke-test the artifact rather than assuming compilation is sufficient.
+6. Publish artifacts and reports with bounded retention and no secrets.
+7. Deploy only through protected environments with a known rollback path.
+
+Use least-privilege workflow permissions, job timeouts, concurrency controls, reproducible action
+versions, and dependency caching that never replaces lockfile verification.

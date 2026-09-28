@@ -1,0 +1,28 @@
+---
+title: Prettier
+description: Opinionated, deterministic formatting for JavaScript, TypeScript, JSON, CSS, and documentation.
+tags:
+  - prettier
+  - formatting
+status: growing
+sources:
+  - https://prettier.io/docs/
+  - https://prettier.io/docs/why-prettier
+---
+
+## Why use it
+
+Prettier parses and reprints supported files, replacing subjective formatting debate with one
+repeatable result. It reduces review noise and makes editor, hook, and CI formatting agree.
+
+## Use it when
+
+- the repository maintains JavaScript, TypeScript, JSON, CSS, Markdown, MDX, or YAML;
+- contributors use different editors; or
+- formatting changes are obscuring behavioral review.
+
+## Avoid or limit it when
+
+Let language-native formatters own their languages: Ruff format owns Python and `gofmt` owns Go.
+Keep Prettier configuration small, exclude generated and vendored files, and add plugins only for a
+real unsupported syntax or convention.

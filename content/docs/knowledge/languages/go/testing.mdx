@@ -1,0 +1,42 @@
+---
+title: Testing Go
+description: Unit, integration, fuzz, benchmark, and test-support knowledge for Go.
+tags:
+  - go
+  - testing
+status: growing
+sources:
+  - https://pkg.go.dev/testing
+  - https://go.dev/doc/security/fuzz/
+  - https://go.dev/doc/build-cover
+---
+
+Go's standard `testing` package supports unit tests, subtests, examples, benchmarks, and fuzz tests.
+Keep ordinary tests beside their package in `*_test.go` files and put package-owned fixtures under
+`testdata/`.
+
+## Useful patterns
+
+- Use table-driven tests when cases share setup and assertion shape.
+- Call `t.Helper()` inside helpers so failures point to the caller.
+- Register cleanup with `t.Cleanup()` and use `t.TempDir()` for isolated files.
+- Use `httptest` for HTTP handlers and in-process test servers.
+- Use an external `package_name_test` package when the test should prove only the public API.
+- Add fuzz targets for parsers, codecs, and invariants; committed failing corpus entries become
+  regression inputs for normal test runs.
+- Benchmark only representative work and use profiles before optimizing.
+
+```bash
+go test ./...
+go test -race ./...
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+go test -fuzz=FuzzParser ./internal/parser
+go test -bench=. -benchmem ./...
+```
+
+Keep shared support under an explicit `internal/testsupport/` boundary only after several packages
+need it. Prefer small fakes and standard assertions; add comparison or assertion packages when they
+materially improve failure output.
+
+See [Testing Go](/docs/knowledge/tooling/testing/go) for repository layout and ownership guidance.

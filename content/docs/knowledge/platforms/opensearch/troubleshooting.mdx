@@ -1,0 +1,60 @@
+---
+title: Troubleshooting OpenSearch
+description: Failure signatures, diagnosis, and root-cause knowledge for OpenSearch.
+tags:
+  - opensearch
+  - troubleshooting
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-allocation/
+  - https://docs.opensearch.org/latest/api-reference/cat/cat-shards/
+  - https://docs.opensearch.org/latest/api-reference/nodes-apis/nodes-stats/
+---
+
+Troubleshoot from the observable symptom toward the narrowest failing layer. Preserve the first
+useful evidence before changing allocation, deleting data, restarting nodes, or increasing limits.
+
+## Triage sequence
+
+1. Define the affected requests, indexes, tenants, and time window.
+2. Check cluster health, unassigned and relocating shards, pending tasks, and recent node changes.
+3. Compare request latency and failures with node CPU, heap, garbage collection, disk, thread-pool
+   queues, rejections, and network behavior.
+4. Inspect the mapping and representative query or bulk item rather than relying only on aggregate
+   dashboards.
+5. Form one hypothesis, gather discriminating evidence, and change one variable at a time.
+
+## Common signatures
+
+| Symptom                         | Evidence to gather                                       | Common cause classes                                       |
+| ------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
+| Red cluster                     | `_cat/shards`, allocation explanation, missing nodes     | Lost primary copy, allocation rules, disk, version issues  |
+| Yellow cluster                  | Unassigned replicas and node/failure-domain count        | Insufficient nodes, disk watermarks, awareness constraints |
+| Search latency                  | Slow logs, query profile, hot nodes, shard fan-out       | Expensive query, skew, cache churn, CPU or heap pressure   |
+| Indexing latency or rejections  | Bulk item errors, write queues, refresh and merge stats  | Oversized batches, mapping growth, disk or merge pressure  |
+| Circuit-breaker or OOM failures | Breaker stats, heap/GC, request shape, field cardinality | Unbounded aggregations, fielddata, large responses         |
+| Documents appear missing        | Alias targets, refresh timing, ID/routing, exact mapping | Wrong index, refresh expectation, query/mapping mismatch   |
+
+For unassigned shards, use the
+[Cluster Allocation Explain API](https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-allocation/)
+before forcing allocation. It reports decisions such as disk thresholds, awareness, filters, shard
+limits, version compatibility, or a failed retry limit. Forced allocation can trade a visible outage
+for silent data loss, so it belongs in an approved recovery playbook with snapshot and data-loss
+checks.
+
+Do not treat a restart, cache clear, replica reduction, limit increase, or index deletion as a
+diagnosis. Record the symptom, evidence, root cause, mitigation, and durable prevention, then link the
+corresponding step-by-step recovery procedure from [Troubleshooting Playbooks](/docs/playbooks/troubleshooting).
+
+## Official references
+
+- [Cluster Allocation Explain API](https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-allocation/)
+  for why a shard is unassigned, allocated, or unable to rebalance.
+- [CAT shards API](https://docs.opensearch.org/latest/api-reference/cat/cat-shards/) for a concise shard
+  placement and state view.
+- [Nodes Stats API](https://docs.opensearch.org/latest/api-reference/nodes-apis/nodes-stats/) for JVM,
+  process, filesystem, thread-pool, indexing, search, and breaker evidence.
+- [Search Profile API](https://docs.opensearch.org/latest/api-reference/search-apis/profile/) for
+  investigating query execution cost; profiling itself adds overhead.
+- [Tasks APIs](https://docs.opensearch.org/latest/api-reference/tasks/) for inspecting and controlling
+  long-running cluster work.

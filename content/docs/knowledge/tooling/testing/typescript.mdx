@@ -1,0 +1,48 @@
+---
+title: Testing TypeScript and React
+description: Unit, component, integration, and browser testing patterns for TypeScript applications.
+tags:
+  - typescript
+  - react
+  - testing
+status: growing
+sources:
+  - https://vitest.dev/guide/
+  - https://testing-library.com/docs/guiding-principles/
+  - https://playwright.dev/docs/intro
+---
+
+## Recommended layers
+
+- Vitest is a strong default for Vite-based applications and modern TypeScript suites.
+- Node's built-in runner can be sufficient for a small Node library or service.
+- Preserve Jest when an established suite depends on its ecosystem and migration has no measured
+  benefit.
+- Testing Library exercises rendered behavior through roles, labels, content, and user interaction.
+- Playwright covers a small set of critical journeys in a real browser.
+
+```text
+src/features/account/
+├── components/
+│   ├── profile-form.tsx
+│   └── profile-form.test.tsx
+├── services/
+│   ├── update-profile.ts
+│   └── update-profile.test.ts
+└── testing/builders/
+tests/
+├── integration/account/
+└── support/
+    ├── builders/
+    └── servers/
+e2e/
+├── account.spec.ts
+└── support/fixtures.ts
+vitest.config.ts
+playwright.config.ts
+```
+
+Test pure business logic without React. For components, interact as a user instead of invoking
+handlers or asserting private state. Use a protocol-level fake such as MSW when browser-facing HTTP
+behavior matters without a live backend. Restore mocks between tests and keep test builders typed so
+defaults evolve with the contract.

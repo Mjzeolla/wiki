@@ -1,0 +1,70 @@
+---
+title: Python Service Tools
+description: Choosing package, quality, validation, and web-framework tools for Python services.
+tags:
+  - python
+  - backend
+  - tooling
+status: growing
+sources:
+  - https://docs.astral.sh/uv/
+  - https://docs.astral.sh/ruff/
+  - https://python-poetry.org/docs/
+  - https://docs.pydantic.dev/latest/
+  - https://fastapi.tiangolo.com/
+---
+
+## Environment and quality
+
+| Technology                                       | Why it exists                                   | Use it when                                             |
+| ------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------- |
+| [uv](../repository/toolchains/python/uv)         | Manage Python projects, environments, and locks | Starting a modern Python application or workspace       |
+| [Poetry](../repository/toolchains/python/poetry) | Manage dependencies, builds, and publishing     | Existing packaging workflows or team standards use it   |
+| Ruff                                             | Fast linting, imports, and formatting           | Replacing overlapping Flake8, isort, and Black duties   |
+| Pyright                                          | Fast static type analysis                       | Editor-friendly typing and strict project checks matter |
+| mypy                                             | Mature configurable static type analysis        | Existing plugins or conventions depend on mypy          |
+| pytest                                           | Expressive test discovery and fixtures          | Unit and integration tests need a standard runner       |
+
+Choose Pyright or mypy deliberately rather than running both without distinct value. Ruff can own
+formatting and most linting in a new repository; duplicate formatters create conflicting output.
+
+## uv or Poetry?
+
+Both can own a `pyproject.toml`-based dependency workflow and deterministic lockfile. Choose one:
+
+- Prefer uv for a new application or service when fast dependency resolution, environments, command
+  execution, lockfiles, tool installation, and workspaces are the main needs.
+- Prefer Poetry when a team already standardizes on it, an existing project uses `poetry.lock`, or
+  its mature package build, publish, dependency-group, and plugin workflow provides real value.
+- Preserve the established tool unless migration solves a measured problem. Never keep `uv.lock`
+  and `poetry.lock` as competing sources of dependency truth.
+
+A strong modern service baseline is:
+
+```text
+uv or Poetry     dependency and environment owner
+Ruff             formatting, imports, and linting
+Pyright or mypy  static type analysis
+pytest           unit and integration tests
+pre-commit       fast file-oriented local hooks
+Mise             Python and tool version pinning
+```
+
+Keep these responsibilities separate. Ruff usually eliminates the need to combine Black, isort,
+and Flake8 in a new project, while pytest and the type checker remain distinct quality gates.
+
+## Validation and web frameworks
+
+| Technology | Why it exists                                      | Use it when                                                |
+| ---------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| Pydantic   | Runtime models, validation, and serialization      | Typed external boundaries or settings are central          |
+| FastAPI    | Typed APIs with OpenAPI built around Pydantic      | API schemas and async support fit the service              |
+| Flask      | Small, flexible WSGI web framework                 | A minimal or established Flask ecosystem is appropriate    |
+| Django     | Batteries-included web platform with ORM and admin | The product benefits from its integrated application stack |
+| Litestar   | Typed ASGI framework with dependency injection     | Its architecture and ecosystem fit team requirements       |
+| SQLAlchemy | Database toolkit and ORM                           | Relational persistence needs explicit mapping/query APIs   |
+| Alembic    | Versioned SQLAlchemy database migrations           | Relational schema changes must be deployed safely          |
+| HTTPX      | Synchronous and asynchronous HTTP client           | Services call external HTTP APIs and need testable clients |
+
+Pydantic should validate external data, not dictate every domain model. Add database, migration,
+queue, and HTTP-client packages only when a real adapter consumes them.

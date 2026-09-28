@@ -1,0 +1,56 @@
+---
+title: Relational Database Clients
+description: Use DBeaver and database-native CLIs for SQL exploration, diagnosis, and controlled changes.
+tags:
+  - databases
+  - sql
+  - dbeaver
+status: growing
+sources:
+  - https://dbeaver.com/docs/dbeaver/
+  - https://github.com/dbeaver/dbeaver/wiki/Installation
+---
+
+## DBeaver
+
+[DBeaver](https://dbeaver.com/docs/dbeaver/) is a cross-platform GUI for browsing schemas, editing
+SQL, inspecting data, importing and exporting, and working with many relational and other databases
+through drivers. It is a useful default when one desktop client must cover PostgreSQL, MySQL,
+MariaDB, SQLite, SQL Server, Oracle, and several less common systems.
+
+Use it for:
+
+- discovering schemas, constraints, indexes, and relationships;
+- writing and explaining queries interactively;
+- comparing expected and actual data during development;
+- viewing query plans and database metadata; and
+- maintaining separate local, staging, and read-only production connection profiles.
+
+Install from the vendor or verify the current Homebrew cask before adding it to a Brewfile:
+
+```bash
+brew info --cask dbeaver-community
+brew install --cask dbeaver-community
+```
+
+The official [installation guide](https://github.com/dbeaver/dbeaver/wiki/Installation) is the source
+of truth for supported macOS versions and distribution choices.
+
+## Native clients still matter
+
+Use `psql`, `mysql`, `sqlite3`, or the database's native client when a command must be reproducible,
+scripted, tunneled through a constrained environment, or included in a runbook. Native tools expose
+database-specific features earlier and avoid hiding transaction or session behavior behind a GUI.
+
+Do not use DBeaver's data editor as an informal production migration mechanism. Put durable schema
+changes in the application's migration system, review them, test rollback or forward recovery, and
+deploy through the repository's normal workflow.
+
+## Connection practices
+
+- Set production connections to manual commit when appropriate and visually distinguish them.
+- Limit result sets before opening unknown or very large tables.
+- Inspect the active transaction and isolation behavior before assuming an edit is immediately
+  committed or safely reversible.
+- Install only required drivers and review driver downloads in restricted environments.
+- Prefer approved SSH tunnels, VPNs, or database proxies over exposing a database directly.

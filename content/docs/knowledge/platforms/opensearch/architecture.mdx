@@ -1,0 +1,63 @@
+---
+title: OpenSearch Architecture
+description: Clusters, nodes, shards, replicas, coordination, and data placement.
+tags:
+  - opensearch
+  - architecture
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/tuning-your-cluster/
+  - https://docs.opensearch.org/latest/tuning-your-cluster/availability-and-recovery/snapshots/index/
+---
+
+An OpenSearch cluster is a group of nodes that share cluster state and distribute shard work. The
+elected cluster-manager node coordinates metadata changes and shard allocation; data nodes store and
+execute work against shards; coordinating nodes route requests and merge results. A node can hold
+several roles, but larger production clusters often separate cluster management from data workloads.
+The official [cluster creation guide](https://docs.opensearch.org/latest/tuning-your-cluster/) covers
+the current node roles and discovery settings.
+
+## Request and storage path
+
+1. A client sends a request to any coordinating-capable node.
+2. The coordinating node routes work to the primary or replica shards that own the relevant data.
+3. Each shard executes locally against its Lucene index.
+4. The coordinating node reduces shard responses into one result.
+
+An index's primary-shard count determines its maximum placement granularity. Replica count controls
+additional shard copies, improving availability and potentially search throughput at the cost of
+storage, indexing work, and recovery traffic. OpenSearch does not place a primary and its replica on
+the same node.
+
+## Cluster state and quorum
+
+Cluster state records index metadata, mappings, settings, nodes, and shard placement. Cluster-manager-
+eligible nodes elect one manager and require a voting quorum for safe decisions. For most production
+deployments, the OpenSearch documentation recommends three dedicated cluster-manager nodes spread
+across failure domains.
+
+Loss of the elected manager pauses cluster-state changes until another is elected; it does not by
+itself erase shard data. Loss of every active copy of a primary shard makes that shard unavailable
+and turns cluster health red.
+
+## Design decisions
+
+- Spread primary and replica copies across zones with allocation awareness.
+- Size shards for recovery and query behavior, not merely total storage. Too many tiny shards consume
+  heap and coordination resources; very large shards recover slowly.
+- Keep enough disk and network headroom for relocation, merges, snapshots, and node loss.
+- Treat snapshots as the recovery boundary. Replicas improve availability but are not backups because
+  deletions and corrupt writes are replicated too.
+- Use aliases to decouple application names from physical index generations.
+
+Record the actual topology, role placement, failure domains, and recovery assumptions in a
+repository-owned architecture diagram rather than assuming the generic model matches production.
+
+## Official references
+
+- [Creating and configuring a cluster](https://docs.opensearch.org/latest/tuning-your-cluster/) for
+  node roles, discovery, cluster formation, and production topology guidance.
+- [Cluster routing and awareness](https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-awareness/)
+  for configuring and inspecting shard distribution across zones or racks.
+- [Snapshots](https://docs.opensearch.org/latest/tuning-your-cluster/availability-and-recovery/snapshots/index/)
+  for the recovery model that complements replicas.

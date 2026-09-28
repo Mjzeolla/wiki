@@ -1,0 +1,42 @@
+---
+title: Styled Component Suites
+description: Choosing comprehensive styled React libraries such as Material UI and Chakra UI.
+tags:
+  - frontend
+  - react
+  - components
+status: growing
+sources:
+  - https://mui.com/material-ui/getting-started/
+  - https://mui.com/material-ui/getting-started/installation/
+  - https://chakra-ui.com/docs/components/concepts/overview
+  - https://chakra-ui.com/docs/get-started/installation
+---
+
+Styled component suites provide broader ready-to-use coverage than headless primitives. They are a
+strong choice for internal tools, administration surfaces, prototypes that may become products, and
+teams that value a coherent supported system over complete markup ownership.
+
+## Material UI
+
+Material UI is a comprehensive React implementation of Google's Material Design with production-ready
+components and theming. Prefer it when Material conventions fit the product or the breadth of its
+ecosystem—such as advanced inputs and data-oriented components—is important.
+
+Account for its styling engine and visual language before adoption. Heavy customization can cost more
+than starting from headless primitives when the desired design strongly diverges from Material.
+
+## Chakra UI
+
+Chakra UI provides accessible React components, semantic tokens, recipes, and a styling system aimed at
+rapid product development. Prefer it when the team wants broad components and theme-driven styling
+without adopting Material Design.
+
+Current Chakra setup uses a provider and Emotion at runtime, and its CLI can add maintained component
+snippets. Validate framework integration and migration requirements against the current documentation.
+
+## Decision rule
+
+Prototype a representative form, overlay, and dense data screen. Compare accessibility, customization
+effort, rendering behavior, performance, testing APIs, and how much library-specific styling leaks into
+feature code before committing the whole application.

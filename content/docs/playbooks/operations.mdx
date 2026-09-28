@@ -1,0 +1,31 @@
+---
+title: Operations Playbooks
+description: Deployment, maintenance, incident, backup, and recovery procedures.
+tags:
+  - operations
+  - playbooks
+status: growing
+---
+
+Operational playbooks are executable procedures for deployment, maintenance, incident mitigation,
+backup, and recovery. They should be safe for a responder who understands the system but did not
+write it.
+
+## Required structure
+
+1. **Trigger and target:** observable condition, affected environment, and component.
+2. **Access and safety:** required permissions, change window, data-loss risk, and explicit stop
+   conditions.
+3. **Prerequisites:** backups, approvals, tools, current health, and dependent teams or systems.
+4. **Procedure:** bounded, copyable steps with expected output at meaningful checkpoints.
+5. **Verification:** service-level and data-integrity evidence that proves success.
+6. **Rollback or recovery:** how to return to a known-safe state, including when rollback is not
+   technically possible.
+7. **Escalation:** owner, decision point, and evidence to include.
+
+Avoid destructive commands with unresolved variables or broad paths. Prefer dry runs and read-only
+diagnostics before mutation. A command that succeeded is not sufficient verification; confirm the
+intended user-visible and data outcomes.
+
+Link each procedure to the knowledge or architecture page explaining the system behavior. Keep
+environment-specific credentials and secrets out of the wiki.

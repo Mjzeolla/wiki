@@ -1,0 +1,80 @@
+---
+title: TanStack Query (React Query)
+description: Fetch, cache, synchronize, and mutate asynchronous server state in React.
+tags:
+  - react
+  - tanstack-query
+  - data-fetching
+status: growing
+sources:
+  - https://tanstack.com/query/latest/docs/framework/react/overview
+  - https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults
+  - https://tanstack.com/query/latest/docs/framework/react/guides/query-keys
+  - https://tanstack.com/query/latest/docs/framework/react/guides/mutations
+---
+
+[TanStack Query](https://tanstack.com/query/latest/docs/framework/react) is the current name of React
+Query. It manages asynchronous server state: fetching, caching, deduplicating requests, background
+refresh, mutations, and invalidation. It is not a general replacement for local or shared client
+state.
+
+## Use it when
+
+- a React client consumes remote data with meaningful cache lifecycles;
+- screens share queries or need request deduplication;
+- mutations must refresh or update related cached resources;
+- retry, pagination, optimistic updates, or background refetching are recurring needs; or
+- the application needs a query layer without adopting Redux.
+
+Prefer framework-native server loading when it already provides the needed ownership and freshness
+model. A mostly server-rendered page does not automatically need a client query cache.
+
+## Recommended structure
+
+Keep query definitions near the domain that owns them while centralizing only application-wide
+configuration:
+
+```text
+src/
+├── app/
+│   └── query/
+│       ├── client.ts
+│       └── provider.tsx
+└── domains/
+    └── projects/
+        └── queries/
+            ├── keys.ts
+            ├── mutations.ts
+            ├── options.ts
+            └── types.ts
+```
+
+- Build query keys hierarchically and include every input used by the query function.
+- Centralize intentional application defaults, not every individual query.
+- Invalidate the smallest correct key after a mutation, or update cached data when the response is
+  authoritative.
+- Validate untrusted response data at the network boundary when runtime correctness matters.
+- Create a fresh `QueryClient` for isolated tests and, where required, per server request.
+
+## Understand the defaults
+
+TanStack Query considers cached query data stale by default, can refetch stale queries when they
+mount or regain focus, garbage-collects inactive queries after a configured interval, and retries
+failed queries by default. These behaviors are useful only when they match product semantics.
+
+Set `staleTime` based on how quickly a resource becomes meaningfully outdated. Do not disable
+refetching globally just to hide duplicate requests observed during development, and do not treat
+`gcTime` as freshness: it controls how long inactive cache data remains in memory.
+
+## Compared with RTK Query
+
+| Concern                 | TanStack Query                  | [RTK Query](./rtk-query)                   |
+| ----------------------- | ------------------------------- | ------------------------------------------ |
+| Requires Redux          | No                              | Yes; integrated with Redux Toolkit         |
+| Cache identity          | Hierarchical query keys         | Endpoint arguments and resource tags       |
+| Invalidation style      | Query-key matching              | Tag invalidation and endpoint utilities    |
+| Best organizational fit | Independent server-state layer  | Application already centered on Redux      |
+| Shared client state     | Use React or another state tool | Redux slices can coexist in the same store |
+
+Both are strong server-state libraries. Prefer the one that matches the application's existing
+ownership model, and avoid mirroring the same remote resources in both caches.

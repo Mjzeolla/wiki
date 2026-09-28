@@ -1,0 +1,27 @@
+---
+title: Tailwind CSS
+description: Utility-first CSS for composing visual designs directly from constrained classes.
+tags:
+  - tailwind-css
+  - css
+status: growing
+sources:
+  - https://tailwindcss.com/docs/styling-with-utility-classes
+---
+
+## Why use it
+
+Tailwind supplies composable utility classes backed by a design theme. It keeps many style decisions
+near the markup and makes spacing, color, typography, and responsive states use shared tokens.
+
+## Use it when
+
+- the team prefers utility composition and constrained design tokens;
+- a component system needs predictable responsive and state variants; or
+- the application is starting without an established styling architecture.
+
+## Avoid or limit it when
+
+Do not add Tailwind alongside an established styling system without a migration decision. Dynamic
+class fragments may not be detected by the compiler; keep complete class names in source. Prefer
+semantic component props over exposing arbitrary conflicting classes everywhere.

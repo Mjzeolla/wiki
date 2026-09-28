@@ -1,0 +1,45 @@
+---
+title: shadcn/ui
+description: Using shadcn/ui as a source-owned component system and code distribution workflow.
+tags:
+  - frontend
+  - react
+  - tailwind
+  - components
+status: growing
+sources:
+  - https://ui.shadcn.com/docs
+  - https://ui.shadcn.com/docs/components
+  - https://ui.shadcn.com/docs/registry
+  - https://ui.shadcn.com/docs/official
+---
+
+shadcn/ui is not a conventional package of opaque components. Its CLI and registry distribute
+component source into the application, where the team can inspect and modify it.
+
+## Use it when
+
+- The application uses Tailwind and wants polished starting components.
+- Product design requires direct control over markup, styling, variants, and composition.
+- The team accepts responsibility for maintaining installed component code.
+- A shared internal registry would help distribute approved components across applications.
+
+## Avoid or reconsider it when
+
+- The team expects normal dependency upgrades to update every component automatically.
+- A comprehensive vendor-supported suite is more valuable than source ownership.
+- Contributors are unlikely to maintain accessibility behavior after customizing primitives.
+
+## Repository conventions
+
+Keep generated and adapted components in `components/ui/`. Keep product compositions such as
+`billing/checkout-form` or `navigation/account-menu` with their owning feature rather than turning
+`components/ui/` into a dump. Centralize tokens and the class-composition helper, and review generated
+code exactly like handwritten code.
+
+When updating, compare upstream changes before overwriting local adaptations. Record intentional
+divergence when accessibility behavior or public props differ from the current registry component.
+
+Only use registries you trust. The official documentation distinguishes the project-maintained site,
+source repository, and CLI from community registries; inspect third-party component code before adding
+it to the repository.

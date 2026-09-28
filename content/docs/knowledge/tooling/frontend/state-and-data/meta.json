@@ -1,0 +1,4 @@
+{
+  "title": "State and Data",
+  "pages": ["index", "redux-toolkit", "rtk-query", "tanstack-query"]
+}

@@ -1,0 +1,19 @@
+---
+title: Styling
+description: Choose a styling strategy before adding class composition and component-variant utilities.
+tags:
+  - css
+  - frontend
+status: growing
+---
+
+Start with one primary styling strategy. [Tailwind CSS](./tailwind-css) is a utility-first option;
+other applications may use CSS Modules, vanilla CSS, CSS-in-JS, or the styling system provided by a
+component suite.
+
+[Class-composition tools](./class-composition) are supporting utilities rather than a styling system:
+they conditionally join classes, resolve Tailwind conflicts, or model component variants. Add each
+one only when the component API has the responsibility it solves.
+
+Tailwind does not supply accessible component behavior. See [UI libraries](../ui-libraries) when the
+application needs reusable dialogs, menus, form controls, and other interactive primitives.

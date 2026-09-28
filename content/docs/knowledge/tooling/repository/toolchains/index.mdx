@@ -1,0 +1,17 @@
+---
+title: Toolchains
+description: Reproducible runtime, dependency, environment, and package-release tooling by ecosystem.
+---
+
+Tooling is grouped by language ecosystem so package managers, lockfiles, build tools, and release
+workflows stay together. Cross-language version management remains at this level.
+
+- [Mise](./mise) manages project runtimes, tools, and repeatable tasks.
+- [JavaScript and TypeScript](./javascript) covers npm, pnpm, lockfiles, workspaces, and publishing
+  packages to npm-compatible registries.
+- [Python](./python) covers pip, uv, Poetry, environments, lockfiles, building distributions, and
+  publishing packages to PyPI-compatible indexes.
+
+Mise pins executable versions; the language ecosystem still owns dependency metadata and lockfiles.
+Do not maintain two competing dependency managers or lockfiles for the same project merely to make
+the toolchain look comprehensive.

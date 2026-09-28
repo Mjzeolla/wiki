@@ -1,0 +1,28 @@
+---
+title: clsx
+description: A small utility for constructing class strings from conditional values.
+tags:
+  - clsx
+  - react
+  - css
+status: growing
+sources:
+  - https://github.com/lukeed/clsx
+---
+
+## Why use it
+
+`clsx` joins strings, arrays, objects, and conditional expressions into a valid `className`. It keeps
+conditional classes readable without handwritten concatenation.
+
+## Use it when
+
+- React or another component framework conditionally applies classes;
+- a shared `cn()` helper needs to accept flexible class inputs; or
+- a smaller drop-in alternative to `classnames` is appropriate.
+
+## Avoid or limit it when
+
+Do not install both `clsx` and `classnames` for the same role. `clsx` does not understand CSS or
+resolve Tailwind conflicts; combine it with `tailwind-merge` only when conflicting utility overrides
+are a real API requirement.

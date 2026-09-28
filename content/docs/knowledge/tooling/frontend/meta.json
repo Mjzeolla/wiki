@@ -1,0 +1,11 @@
+{
+  "title": "Frontend Foundations",
+  "pages": [
+    "index",
+    "application-stack",
+    "state-and-data",
+    "types-and-validation",
+    "styling",
+    "ui-libraries"
+  ]
+}

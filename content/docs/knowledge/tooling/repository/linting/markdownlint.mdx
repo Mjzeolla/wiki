@@ -1,0 +1,26 @@
+---
+title: Markdownlint
+description: Structural and stylistic validation for maintained Markdown documentation.
+tags:
+  - markdownlint
+  - documentation
+status: growing
+sources:
+  - https://github.com/DavidAnson/markdownlint
+---
+
+## Why use it
+
+Markdownlint detects inconsistent heading structure, malformed lists, spacing problems, and other
+patterns that render unpredictably or make documentation hard to maintain.
+
+## Use it when
+
+- Markdown or MDX is maintained as a product surface;
+- many contributors edit documentation; or
+- generated sites depend on predictable document structure.
+
+## Avoid or limit it when
+
+Exclude generated and vendored documents. Configure narrow exceptions for framework-specific MDX
+behavior rather than globally disabling rules merely to make existing content pass.

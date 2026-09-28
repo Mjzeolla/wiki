@@ -1,0 +1,75 @@
+---
+title: Packages and Applications
+description: Manage Mac applications and command-line utilities as a reviewable inventory.
+tags:
+  - homebrew
+  - brewfile
+  - macos
+status: growing
+---
+
+Use Homebrew for machine-level command-line utilities and cask applications. Use project package
+managers for project dependencies; do not install Node, Python, or Go libraries globally through
+Homebrew merely because they are available there.
+
+## Keep a Brewfile
+
+Homebrew Bundle gives the Mac an inspectable desired-state file:
+
+```ruby title="Brewfile"
+brew "git"
+brew "gh"
+brew "jq"
+brew "ripgrep"
+brew "shellcheck"
+
+cask "ghostty"
+cask "visual-studio-code"
+```
+
+Apply and verify it with:
+
+```bash
+brew bundle --file ./Brewfile
+brew bundle check --file ./Brewfile
+```
+
+The [Homebrew Bundle documentation](https://docs.brew.sh/Brew-Bundle-and-Brewfile) explains formulae,
+casks, Mac App Store entries, editor extensions, and inventory commands. A Brewfile is not a
+lockfile: Homebrew is rolling-release software, so use Mise or a project lockfile when versions
+must be pinned.
+
+## Selection rules
+
+- Prefer vendor-signed downloads or official Homebrew formulae and casks.
+- Review third-party taps before trusting them; taps execute package definitions on the machine.
+- Separate essentials from experiments so rebuilding does not reinstall abandoned software.
+- Do not commit licensed applications, activation material, account identifiers, or private taps to
+  a public dotfiles repository.
+- Run `brew update` and review upgrades before applying a large change set.
+
+Avoid `brew bundle cleanup --force` during normal bootstrap: it removes managed packages that are
+not declared and deserves a separate, reviewed cleanup decision.
+
+## Useful utility groups
+
+Choose from these groups based on recurring work rather than installing every package:
+
+| Concern                 | Useful options                     | Why                                                       |
+| ----------------------- | ---------------------------------- | --------------------------------------------------------- |
+| Search and navigation   | `ripgrep`, `fd`, `fzf`, `zoxide`   | Find text, files, history, and frequent directories       |
+| Command correction      | `thefuck`                          | Suggest a reviewed correction for the last failed command |
+| Structured text         | `jq`, `yq`                         | Inspect and transform JSON or YAML                        |
+| File inspection         | `bat`, `eza`, `tree`, `file`       | Read source and understand directory or file structure    |
+| Shell quality           | `shellcheck`, `shfmt`              | Catch shell defects and keep scripts consistently styled  |
+| Performance diagnostics | `btop`, `hyperfine`, `dust`, `duf` | Inspect processes, benchmarks, disk usage, and capacity   |
+| Network diagnostics     | `curl`, `httpie`, `mtr`, `doggo`   | Exercise APIs and diagnose routing or DNS                 |
+| Sessions                | `tmux`                             | Preserve terminal work across disconnects                 |
+| Encryption              | `age`, `gnupg`                     | Encrypt files when a workflow explicitly requires it      |
+
+Prefer macOS built-ins until an alternative solves a demonstrated problem. Confirm overlapping
+commands such as GNU and BSD utilities before putting a replacement ahead of system paths.
+
+Database clients are documented separately under [Database tooling](../../../knowledge/tooling/databases)
+because connection safety, credentials, and production access deserve more guidance than a Brewfile
+entry.

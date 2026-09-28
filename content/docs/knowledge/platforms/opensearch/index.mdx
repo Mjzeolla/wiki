@@ -1,0 +1,57 @@
+---
+title: OpenSearch
+description: Architecture, indexing, querying, operations, and troubleshooting for OpenSearch.
+tags:
+  - opensearch
+  - search
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/about/
+  - https://docs.opensearch.org/latest/getting-started/intro/
+---
+
+[OpenSearch](https://docs.opensearch.org/latest/about/) is a distributed search and analytics engine
+built around JSON documents, inverted indexes, and a REST API. A cluster divides indexes into primary
+shards, distributes those shards across data nodes, and optionally maintains replica copies for
+availability and read capacity.
+
+Use OpenSearch when the problem needs full-text relevance, faceting and aggregations, log or event
+exploration, or retrieval across denormalized documents. It is not a relational source of truth:
+cross-document transactions, joins, and strongly normalized update workflows are usually better
+owned by a transactional database and projected into OpenSearch.
+
+## Mental model
+
+```text
+application -> index/alias -> primary shards -> Lucene segments
+                           \-> replica shards on other nodes
+```
+
+- A **document** is a JSON object addressed by an index and document ID.
+- A **mapping** defines how fields are indexed and queried.
+- An **analyzer** converts text into searchable tokens at index and query time.
+- An **index** is a logical collection backed by one or more primary shards.
+- A **replica** is another copy of a primary shard and is never allocated on the same node as its
+  primary.
+- An **alias** provides a stable application-facing name across index versions or lifecycle changes.
+
+Start with the question being answered, then design mappings and queries together. Shard count,
+field types, analyzers, and document shape are expensive to change after substantial data exists.
+Use versioned indexes and aliases when a mapping change requires reindexing.
+
+Repeatable incident and maintenance procedures belong in [Playbooks](/docs/playbooks); these pages
+explain the behavior those procedures depend on.
+
+- [Architecture](./architecture)
+- [Indexing](./indexing)
+- [Querying](./querying)
+- [Operations](./operations)
+- [Troubleshooting](./troubleshooting)
+
+## Official starting points
+
+- [OpenSearch introduction](https://docs.opensearch.org/latest/getting-started/intro/) for the product
+  model and a first index-and-search workflow.
+- [OpenSearch documentation](https://docs.opensearch.org/latest/) for the complete maintained manual.
+- [API reference](https://docs.opensearch.org/latest/api-reference/) for request contracts and
+  parameters; prefer this over copying full endpoint tables into the wiki.

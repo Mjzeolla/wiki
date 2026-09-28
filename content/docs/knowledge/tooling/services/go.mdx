@@ -1,0 +1,63 @@
+---
+title: Go Service Tools
+description: Standard formatting, analysis, security, and server choices for Go services.
+tags:
+  - go
+  - backend
+  - tooling
+status: growing
+sources:
+  - https://go.dev/doc/
+  - https://staticcheck.dev/docs/
+  - https://go.dev/security/vuln/
+  - https://github.com/go-chi/chi
+  - https://github.com/go-playground/validator
+  - https://github.com/santhosh-tekuri/jsonschema
+---
+
+| Technology      | Why it exists                                  | Use it when                                               |
+| --------------- | ---------------------------------------------- | --------------------------------------------------------- |
+| `net/http`      | Standard HTTP server and routing primitives    | The standard library meets the service's routing needs    |
+| `log/slog`      | Standard structured logging                    | No existing logging stack requires another API            |
+| `gofmt`         | Canonical Go formatting                        | Always for maintained Go source                           |
+| `go vet`        | Detect suspicious constructs using Go analysis | As a baseline static check                                |
+| Staticcheck     | Broader high-signal static analysis            | A service needs checks beyond `go vet`                    |
+| golangci-lint   | Orchestrate a configured linter collection     | The repository can maintain a deliberate, pinned rule set |
+| `govulncheck`   | Report reachable known Go vulnerabilities      | CI or scheduled checks can resolve module advisories      |
+| `go test -race` | Detect runtime data races                      | Concurrent behavior and CI resources justify the cost     |
+
+Start with the standard library before choosing a router or framework. Use either a curated
+golangci-lint configuration or a smaller direct tool set; enabling every available linter creates
+noise rather than confidence. Builds should compile real service entrypoints in addition to running
+tests.
+
+## Common packages that make service work easier
+
+| Need                   | Package or starting point                           | Why and when                                                                       |
+| ---------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| HTTP routing           | `net/http`, then `go-chi/chi/v5`                    | Add route groups and composable middleware while retaining standard handlers       |
+| Struct validation      | `go-playground/validator/v10`                       | Validate typed requests or configuration with reusable field and cross-field rules |
+| JSON Schema validation | `santhosh-tekuri/jsonschema/v6`                     | Validate arbitrary JSON against a published JSON Schema draft                      |
+| Assertions             | standard `testing`, then `stretchr/testify/require` | Reduce repetitive fatal assertions without replacing Go's runner                   |
+| Rich comparisons       | `google/go-cmp`                                     | Produce readable diffs and customize equality semantics                            |
+| PostgreSQL             | `database/sql` or `jackc/pgx/v5`                    | Use PostgreSQL-specific behavior or pgx's native API                               |
+| Typed SQL              | `sqlc`                                              | Generate type-safe Go access code while keeping SQL explicit                       |
+| Migrations             | `golang-migrate/migrate`                            | Apply ordered schema migrations when the service owns them                         |
+| Environment config     | explicit `os` parsing, then `caarlos0/env`          | Map environment variables into typed structs with less boilerplate                 |
+| Layered config         | Koanf                                               | Merge file, environment, flag, or remote providers                                 |
+| Observability          | standard packages, then OpenTelemetry               | Interoperate on traces and metrics across services                                 |
+
+## JSON validation choices
+
+Decoding with `encoding/json` proves that JSON has the expected syntax and can populate a Go type;
+it does not enforce every business constraint.
+
+- Decode known API requests into explicit structs, reject unknown fields when the contract requires
+  it, and validate typed constraints using direct code or `validator/v10`.
+- Use a JSON Schema engine when schemas are external, dynamic, user-provided, versioned independently,
+  or part of the product's interoperability contract.
+- Translate validation failures into a stable public error format rather than exposing library-
+  specific messages.
+
+Every dependency should remove enough maintained code to justify its API, transitive dependencies,
+upgrade work, and security surface. Prefer small packages compatible with standard interfaces.

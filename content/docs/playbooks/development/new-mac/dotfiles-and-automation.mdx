@@ -1,0 +1,47 @@
+---
+title: Dotfiles and Automation
+description: Restore personal configuration without turning bootstrap into an opaque destructive script.
+tags:
+  - dotfiles
+  - chezmoi
+  - automation
+status: growing
+---
+
+Dotfiles should make a machine reproducible while still allowing machine-specific and secret state.
+[chezmoi](https://www.chezmoi.io/) is useful when configuration spans multiple machines because it
+supports templates, per-machine data, password-manager integration, and preview-before-apply flows.
+
+```bash
+brew install chezmoi
+chezmoi init <repository>
+chezmoi diff
+chezmoi apply
+```
+
+Review `chezmoi diff` before applying. For a small single-Mac setup, a plain Git repository plus an
+explicit bootstrap script can be enough; do not adopt a dotfile manager only for novelty.
+
+## Folder-first ownership
+
+```text
+dotfiles/
+├── Brewfile
+├── config/
+│   ├── ghostty/
+│   ├── git/
+│   ├── mise/
+│   └── zsh/
+├── scripts/
+│   ├── setup/
+│   ├── verify/
+│   └── update/
+└── README.md
+```
+
+Keep setup, verification, and update concerns separate. A setup script should be idempotent where
+practical, stop on errors, show consequential changes, and avoid deleting existing configuration.
+Provide a dry-run or diff for file replacement and system-default changes.
+
+Never store API tokens, recovery keys, private SSH keys, signing keys, cookies, or employer-managed
+configuration in the dotfiles repository. Store references to secret-manager items instead.

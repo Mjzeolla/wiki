@@ -1,0 +1,36 @@
+---
+title: Database Tooling
+description: Choose safe GUI and command-line clients for relational, key-value, and document databases.
+tags:
+  - databases
+  - tooling
+status: growing
+---
+
+Database tools should make exploration and diagnosis easier without bypassing application invariants
+or production change controls. Prefer read-only credentials for investigation, name connections by
+environment, and make production visually distinct from local development.
+
+| Database model | Primary tools                                  | Best use                                             |
+| -------------- | ---------------------------------------------- | ---------------------------------------------------- |
+| Relational     | [DBeaver and native SQL clients](./relational) | Schema browsing, SQL, execution plans, data review   |
+| Key-value      | [`redis-cli`](./key-value)                     | Redis inspection, latency, memory, and cluster state |
+| Document       | [MongoDB Compass and `mongosh`](./document)    | Documents, indexes, queries, aggregations, and plans |
+
+## Safety baseline
+
+- Keep credentials in a password manager, secret broker, or approved connection profile—not shell
+  history, screenshots, dotfiles, or repository files.
+- Use TLS and verify the server certificate for remote connections.
+- Prefer a read-only role for routine exploration and a separately obtained elevated session for
+  approved changes.
+- Confirm the host, account, database, and environment immediately before a write or destructive
+  operation.
+- Avoid exporting production data to an unmanaged laptop. Redact query results and screenshots before
+  sharing them.
+- Treat saved queries and GUI workspaces as code when they become operationally important: review,
+  document, and version safe scripts in the owning repository.
+
+GUI clients are useful for discovery; native CLIs remain important for reproducible diagnostics,
+automation, and environments without a desktop. Neither should become an undocumented migration or
+deployment mechanism.

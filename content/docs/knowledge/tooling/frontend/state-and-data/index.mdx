@@ -1,0 +1,52 @@
+---
+title: React State and Data
+description: Choose state ownership before choosing Redux Toolkit, RTK Query, or TanStack Query.
+tags:
+  - react
+  - state-management
+  - data-fetching
+status: growing
+sources:
+  - https://react.dev/learn/managing-state
+  - https://redux.js.org/introduction/getting-started
+  - https://redux-toolkit.js.org/rtk-query/overview
+  - https://tanstack.com/query/latest/docs/framework/react/overview
+---
+
+Choose a tool only after identifying who owns the state. A React application usually contains
+several kinds of state, and forcing all of them into one store makes ownership harder to understand.
+
+| State kind          | Examples                                 | Prefer first                                               |
+| ------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| Local UI state      | Open dialog, selected tab, draft input   | Component state or a nearby reducer                        |
+| URL state           | Search, filters, pagination, active view | Router search parameters                                   |
+| Form state          | Values, validation, submission status    | Native forms, framework actions, or a focused form library |
+| Server state        | Users, orders, search results            | Framework data APIs, RTK Query, or TanStack Query          |
+| Shared client state | Session workflow, editor model, cart     | React context for simple cases; Redux Toolkit when complex |
+
+## Choosing a library
+
+| Need                                                              | Default choice                              |
+| ----------------------------------------------------------------- | ------------------------------------------- |
+| Complex shared client state with explicit events and strong tools | [Redux Toolkit](./redux-toolkit)            |
+| Server-state caching in an application already centered on Redux  | [RTK Query](./rtk-query)                    |
+| Server-state caching without adopting Redux                       | [TanStack Query](./tanstack-query)          |
+| Mostly server-rendered data with simple mutations                 | Framework-native data and mutation features |
+
+RTK Query and TanStack Query solve much of the same server-state problem. Select one owner for a
+given API domain; running both over the same resources creates duplicate caches, invalidation paths,
+and debugging models.
+
+Redux Toolkit and either query library can coexist when their responsibilities remain distinct:
+Redux Toolkit owns durable shared client state, while the query layer owns remote data and its cache.
+
+## Adoption checklist
+
+Before adding a state or query library, document:
+
+- which state category it owns;
+- why React, the router, or framework-native data loading is insufficient;
+- the cache and invalidation strategy for remote data;
+- where providers and configuration live;
+- how tests create isolated stores or query clients; and
+- which library is forbidden from owning the same data.

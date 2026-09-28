@@ -1,0 +1,55 @@
+---
+title: UI Libraries
+description: Choosing a React component system by ownership, styling, accessibility, and delivery model.
+tags:
+  - frontend
+  - react
+  - components
+status: growing
+sources:
+  - https://ui.shadcn.com/docs
+  - https://www.radix-ui.com/primitives/docs/overview/introduction
+  - https://headlessui.com/
+  - https://react-spectrum.adobe.com/react-aria/getting-started.html
+  - https://mui.com/material-ui/getting-started/
+  - https://chakra-ui.com/docs/components/concepts/overview
+---
+
+Choose a UI library by deciding who owns the rendered component code and visual design. Tailwind CSS
+can style components from several of these approaches, but it does not replace their keyboard,
+focus-management, state, or accessibility behavior.
+
+| Approach            | Good default                        | You own                                   | Main tradeoff                                   |
+| ------------------- | ----------------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| Source-owned system | [shadcn/ui](./shadcn-ui)            | Installed component source and its upkeep | Maximum control; upgrades require active review |
+| Headless primitives | [Radix UI](./radix-ui)              | Styling and higher-level compositions     | Strong behavior base; more design-system work   |
+| Tailwind headless   | [Headless UI](./headless-ui)        | Styling and composition                   | Natural Tailwind fit; narrower component scope  |
+| Accessibility-first | [React Aria](./react-aria)          | Styling and product-specific composition  | Deep interaction support; more API learning     |
+| Styled suite        | [MUI or Chakra UI](./styled-suites) | Theme and product-specific wrappers       | Fast coverage; stronger library design opinions |
+
+## Recommended starting points
+
+- Use **shadcn/ui** when a Tailwind-based product wants attractive defaults and is willing to own
+  component source inside the repository.
+- Use **Radix UI** when building a custom design system and accessible behavior primitives are the
+  missing layer.
+- Use **Headless UI** when the application already uses Tailwind and needs a focused set of unstyled
+  interactive components.
+- Use **React Aria** when accessibility, internationalization, and interaction across input methods
+  are primary requirements.
+- Use **MUI or Chakra UI** when broad ready-made coverage and consistent theming matter more than
+  owning every component implementation.
+
+## Selection rules
+
+1. Inventory the components the product actually needs, including data grids, date pickers, command
+   menus, and complex forms.
+2. Prototype the hardest two components, not just a button.
+3. Verify keyboard navigation, focus behavior, screen-reader labels, dark mode, server rendering,
+   bundle impact, and test ergonomics.
+4. Select one primary component model. Add a second library only for a documented capability gap.
+5. Wrap shared product conventions in an application-owned `components/ui/` boundary. Do not create
+   wrappers that merely rename every upstream prop.
+
+Never assume that a library makes the final interface accessible automatically. Application code must
+still supply correct labels, content structure, error messages, contrast, and product-specific tests.

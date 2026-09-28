@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repository_root"
+
+arguments=(
+  --config lychee.toml
+  --no-progress
+  --root-dir "$repository_root"
+)
+
+if (($# > 0)); then
+  echo "ERROR: unknown argument: $1" >&2
+  echo "Usage: scripts/ci/check-links" >&2
+  exit 2
+fi
+
+mise exec -- lychee "${arguments[@]}" \
+  'README.md' \
+  'docs/**/*.md' \
+  'content/**/*.mdx'

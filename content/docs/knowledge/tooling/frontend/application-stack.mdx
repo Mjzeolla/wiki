@@ -1,0 +1,32 @@
+---
+title: React Application Stack
+description: Choosing frameworks, data tools, and form libraries around a React frontend.
+tags:
+  - react
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://react.dev/
+  - https://nextjs.org/docs
+  - https://vite.dev/guide/
+---
+
+| Technology                                        | Why it exists                                          | Use it when                                                 |
+| ------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
+| React                                             | Compose interactive interfaces from components         | The product needs a component-driven client UI              |
+| Next.js                                           | Add routing, server rendering, server code, and builds | The application benefits from an integrated React framework |
+| Vite                                              | Fast development server and frontend build tooling     | Building a client app or library without Next.js features   |
+| [TanStack Query](./state-and-data/tanstack-query) | Cache and synchronize asynchronous server state        | Client data has retries, invalidation, or cache lifecycles  |
+| React Hook Form                                   | Coordinate complex client form state efficiently       | Native or server-driven forms no longer meet requirements   |
+
+React is a UI library, Vite is build tooling, and Next.js is an application framework. Do not treat
+Vite alone as a routing, data-loading, or deployment architecture. Prefer framework-native data and
+form primitives until the application demonstrates the richer lifecycle that another library owns.
+
+Use the [state-and-data decision guide](./state-and-data) to distinguish shared client state from
+server state and to choose among Redux Toolkit, RTK Query, and TanStack Query.
+
+For buttons, dialogs, menus, form controls, and other reusable interface building blocks, use the
+[UI-library decision guide](./ui-libraries). Tailwind styles components but does not provide their
+interaction behavior or accessibility implementation.

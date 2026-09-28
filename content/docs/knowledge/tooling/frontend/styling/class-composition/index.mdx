@@ -1,0 +1,25 @@
+---
+title: Class Composition and Variants
+description: Choose utilities for conditional classes, Tailwind conflict resolution, and typed component variants.
+tags:
+  - css
+  - react
+  - component-libraries
+status: growing
+---
+
+These packages are complementary only when a component actually needs each responsibility:
+
+| Responsibility                               | Tool                                         |
+| -------------------------------------------- | -------------------------------------------- |
+| Join conditional class values                | [clsx](./clsx) or [classnames](./classnames) |
+| Resolve conflicting Tailwind utility classes | [tailwind-merge](./tailwind-merge)           |
+| Model a finite, typed component variant API  | [CVA](./cva)                                 |
+
+For new code, prefer `clsx` over installing both conditional class joiners. Add `tailwind-merge` when
+components intentionally accept class overrides that can conflict. Add CVA when a reusable component
+exposes meaningful variants such as intent, size, tone, or density.
+
+A common Tailwind helper combines `clsx` with `tailwind-merge`, while a component definition uses CVA
+to describe its public variants. This progression is useful for a component system, but unnecessary
+for static or one-off markup.

@@ -1,0 +1,35 @@
+---
+title: Practices
+description: Durable engineering approaches that apply across technologies.
+tags:
+  - practices
+status: growing
+---
+
+Practices describe repeatable ways of working that remain useful across technologies. They should
+state when they apply, the evidence they produce, and the failure mode they prevent—not merely declare
+that a team should follow a fashionable technique.
+
+## Baseline engineering practices
+
+- **Design around ownership.** Put behavior, state, tests, and documentation with the domain that
+  changes them. Shared code must have multiple real consumers and no narrower owner.
+- **Search before adding.** Look for existing utilities, contracts, configuration, and dependencies
+  before introducing another implementation.
+- **Make changes in verifiable increments.** Keep each change coherent enough to review and small
+  enough that failures can be attributed.
+- **Test contracts at the lowest useful layer.** Prefer fast deterministic tests, but include
+  integration and end-to-end coverage where boundaries are the behavior.
+- **Debug from evidence.** Reproduce the symptom, narrow the failing layer, and test hypotheses before
+  changing production behavior.
+- **Treat compatibility as a feature.** Plan migrations for APIs, events, schemas, configuration, and
+  persisted data instead of relying on flag-day changes.
+- **Design operationally.** Define observability, safe rollout, rollback or recovery, ownership, and
+  capacity before calling a service production-ready.
+- **Minimize privilege and exposure.** Validate untrusted inputs, authorize at the owning boundary,
+  protect secrets, and record security-relevant actions.
+- **Document decisions and procedures separately.** Explanations capture why; runbooks capture a
+  tested sequence for a known situation.
+
+Create a focused practice page when the guidance needs a workflow, examples, validation criteria, or
+language-specific links. Keep personal or unproven observations in Notes until they become durable.

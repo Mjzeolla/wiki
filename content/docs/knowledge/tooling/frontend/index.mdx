@@ -1,0 +1,26 @@
+---
+title: Frontend Foundations
+description: State, data, type safety, validation, styling, and component choices for React applications.
+tags:
+  - frontend
+  - react
+status: growing
+---
+
+| Area                                           | Primary responsibility                              |
+| ---------------------------------------------- | --------------------------------------------------- |
+| [State and data](./state-and-data)             | Client state and remote-data ownership              |
+| [Types and validation](./types-and-validation) | Compile-time contracts and runtime boundary parsing |
+| [Styling](./styling)                           | Styling strategy, class composition, and variants   |
+| [UI libraries](./ui-libraries)                 | Components, behavior, and accessibility             |
+
+For a Tailwind component library, the common progression is `clsx`, then `tailwind-merge` when
+consumer overrides are supported, then CVA when components expose a real variant API. Do not add
+all three automatically to an application that does not need those responsibilities. The
+[class-composition guide](./styling/class-composition) explains where each role belongs.
+
+Tailwind supplies styling utilities, not complete component behavior. See [UI libraries](./ui-libraries)
+for when to adopt shadcn/ui, headless primitives, or a packaged component suite.
+
+For shared client state and remote data, use the [state-and-data decision guide](./state-and-data)
+before adding Redux Toolkit, RTK Query, or TanStack Query.

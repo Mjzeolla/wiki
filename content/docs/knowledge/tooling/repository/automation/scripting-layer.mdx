@@ -1,0 +1,59 @@
+---
+title: Repository Scripting Layers
+description: Organizing setup, CI, development, release, and operational automation by ownership.
+tags:
+  - scripting
+  - repository-structure
+  - automation
+status: growing
+---
+
+Repository scripts should provide stable commands that work locally and in CI. Keep workflow YAML
+focused on platform concerns; put reusable mechanics in versioned scripts.
+
+## Folder-first structure
+
+```text
+scripts/
+├── setup/
+│   └── repository          install tools, dependencies, and hooks
+├── ci/
+│   ├── check               aggregate required local CI
+│   ├── check-links         link policy and exclusions
+│   └── check-shell         shell validation
+├── dev/                    multi-step local development workflows
+├── migrations/             explicit data or compatibility transitions
+├── release/                version, package, sign, and publish preparation
+└── operations/             bounded operator commands owned by the repository
+```
+
+Create a folder with its first real command, not as empty scaffolding. Domain-heavy repositories may
+replace `operations/` with meaningful owners such as `kubernetes/`, `tofu/`, `flux/`, or
+`applications/`. Application-specific scripts stay with the application; only repository-wide
+automation belongs at the root.
+
+## Layer responsibilities
+
+- Package scripts own short ecosystem commands: format, lint, typecheck, test, and build.
+- Repository scripts compose commands, validate inputs, and express multi-step workflows.
+- Make or Mise provides memorable cross-ecosystem aliases and help text.
+- Husky or pre-commit calls the same fast entrypoints for local feedback.
+- CI calls the same scripts from a clean environment and adds caches, artifacts, permissions,
+  matrices, and protected environments.
+
+Avoid duplicating the command list across Make, hooks, scripts, and workflow YAML. If
+`scripts/ci/check` is the aggregate, every outer layer should call it.
+
+## Reliable shell entrypoints
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repository_root"
+```
+
+Quote paths, validate required tools and inputs before mutation, use dependable exit codes, and send
+errors to stderr. Destructive actions must be narrow and explicit. Move structured parsing, API
+clients, or logic requiring tests into a typed language instead of growing an opaque shell script.

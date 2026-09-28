@@ -1,0 +1,38 @@
+---
+title: Node.js Service Tools
+description: Choosing frameworks and supporting tools for TypeScript APIs, workers, and libraries.
+tags:
+  - nodejs
+  - typescript
+  - backend
+status: growing
+sources:
+  - https://fastify.dev/docs/latest/
+  - https://hono.dev/docs/
+  - https://expressjs.com/
+  - https://getpino.io/
+---
+
+## Frameworks
+
+| Technology | Why it exists                                      | Use it when                                                |
+| ---------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| Fastify    | Schema-oriented HTTP framework with a plugin model | Building a Node API that benefits from schemas and plugins |
+| Hono       | Small framework built around web-standard APIs     | Targeting portable serverless, edge, or Node runtimes      |
+| Express    | Minimal, mature middleware ecosystem               | Existing code, libraries, or team constraints require it   |
+
+Choose one HTTP framework from runtime and ecosystem requirements. A worker or library may not need
+one at all.
+
+## Supporting tools
+
+| Technology | Why it exists                                   | Use it when                                             |
+| ---------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Pino       | Low-overhead structured JSON logging            | The framework does not already own structured logging   |
+| tsx        | Run TypeScript directly during development      | Scripts or dev entrypoints need no separate build first |
+| tsup       | Bundle libraries and selected Node artifacts    | Distribution requires bundling or multiple output forms |
+| Zod        | Validate configuration and transport boundaries | The framework does not supply the chosen schema system  |
+
+Do not add tsup merely because the project uses TypeScript; deployed applications can often compile
+with `tsc` or framework tooling. Every service should still validate startup configuration, handle
+shutdown signals, and define readiness independently of its framework.

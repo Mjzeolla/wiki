@@ -1,0 +1,68 @@
+---
+title: Operating OpenSearch
+description: Cluster health, capacity, shards, snapshots, upgrades, and observability.
+tags:
+  - opensearch
+  - operations
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-health/
+  - https://docs.opensearch.org/latest/tuning-your-cluster/availability-and-recovery/snapshots/index/
+  - https://docs.opensearch.org/latest/migrate-or-upgrade/rolling-upgrade/
+---
+
+Operate OpenSearch around four constraints: shard availability, resource headroom, recoverability,
+and workload latency. Cluster health color is an allocation signal, not a complete service-level
+indicator.
+
+## Health semantics
+
+The [Cluster Health API](https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-health/)
+reports allocation state at cluster, index, or shard level:
+
+- **Green:** every primary and replica shard is allocated.
+- **Yellow:** all primaries are allocated, but at least one replica is not. Reads and writes can work,
+  but redundancy is reduced.
+- **Red:** at least one primary shard is unallocated, so some data is unavailable.
+
+Monitor search and indexing latency, error and rejection rates, JVM heap and garbage collection,
+CPU, disk usage and watermarks, shard count and size, pending cluster tasks, recovery traffic, and
+snapshot outcomes. Alert on user-visible symptoms and exhausted safety margins, not health color
+alone.
+
+## Capacity and shard movement
+
+Keep capacity for a node or failure-domain loss and the recovery traffic it triggers. Disk watermarks
+can prevent allocation or move shards away from full nodes. Before adding nodes, determine whether
+the constraint is storage, heap, CPU, network, query concurrency, write throughput, or an inefficient
+mapping/query; horizontal capacity does not repair every bottleneck.
+
+## Backups and recovery
+
+Snapshots back up indexes and cluster metadata to a repository and are incremental across successful
+snapshots. A snapshot is not a perfectly simultaneous image of every shard. Automate snapshots,
+monitor failures, define retention, protect the repository from the cluster's failure domain, and
+regularly restore into an isolated environment to prove recovery time and compatibility.
+
+## Changes and upgrades
+
+Before upgrades or rolling restarts, confirm green health, resolve allocation problems, capture a
+tested snapshot, check plugin and client compatibility, and define a rollback or restore plan.
+OpenSearch nodes cannot simply be downgraded after an incompatible upgrade. Follow the supported
+version path and replace or restart nodes in the documented order while watching recovery and health.
+
+Keep exact commands, access requirements, stop conditions, verification, and rollback steps in
+[Operations Playbooks](/docs/playbooks/operations). This page explains why those controls exist.
+
+## Official references
+
+- [Cluster Health API](https://docs.opensearch.org/latest/api-reference/cluster-api/cluster-health/)
+  for health fields and wait conditions.
+- [Snapshot documentation](https://docs.opensearch.org/latest/tuning-your-cluster/availability-and-recovery/snapshots/index/)
+  for repository, snapshot, restore, and management guidance.
+- [Rolling upgrades and restarts](https://docs.opensearch.org/latest/migrate-or-upgrade/rolling-upgrade/)
+  for supported preparation and node sequencing.
+- [CAT APIs](https://docs.opensearch.org/latest/api-reference/cat/index/) for concise operator-facing
+  views; applications should prefer JSON APIs.
+- [Performance Analyzer](https://docs.opensearch.org/latest/monitoring-your-cluster/pa/index/) for
+  cluster resource and performance diagnostics.

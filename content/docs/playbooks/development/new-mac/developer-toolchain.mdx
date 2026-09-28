@@ -1,0 +1,52 @@
+---
+title: Developer Toolchain
+description: Pin language runtimes, authenticate Git safely, and validate a new development machine.
+tags:
+  - mise
+  - git
+  - development
+status: growing
+---
+
+## Runtime ownership
+
+Use [Mise](../../../knowledge/tooling/repository/toolchains/mise) for language runtimes and developer tools that
+need repository-aware versions. Its official installer is the maintainer's preferred macOS method:
+
+```bash
+curl https://mise.run | sh
+~/.local/bin/mise --version
+```
+
+Read the downloaded installer when your threat model requires it, or use Homebrew as the more
+familiar package-managed alternative. Activate Mise for Zsh using the current
+[installation guidance](https://mise.jdx.dev/installing-mise.html), then let each repository's
+`mise.toml` select Node, Python, Go, and other tool versions.
+
+## Git identity and authentication
+
+Set identity explicitly and inspect the result:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global --list --show-origin
+```
+
+Choose SSH or HTTPS according to the hosting account and organizational policy. The GitHub CLI can
+configure GitHub authentication, but do not copy private SSH keys from an old machine unless your
+key-management policy explicitly supports that. Creating a new hardware-backed or machine-specific
+key is usually easier to revoke independently.
+
+## Repository validation
+
+For each active repository:
+
+1. clone it into the intended ownership directory;
+2. inspect `README`, `AGENTS.md`, `mise.toml`, and setup scripts;
+3. run `mise install` when the repository declares Mise tools;
+4. run its documented setup command;
+5. run the smallest complete local check before beginning work.
+
+Do not copy `node_modules`, virtual environments, Go build caches, or generated outputs from the old
+Mac. Rebuild them from manifests and lockfiles; that is the recovery test those files support.

@@ -1,0 +1,4 @@
+{
+  "title": "Repository Tooling",
+  "pages": ["index", "toolchains", "formatting", "linting", "hooks", "automation"]
+}

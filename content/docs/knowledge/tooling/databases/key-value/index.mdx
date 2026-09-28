@@ -1,0 +1,56 @@
+---
+title: Redis CLI
+description: Inspect Redis safely with its native command-line client.
+tags:
+  - databases
+  - redis
+  - cli
+status: growing
+sources:
+  - https://redis.io/docs/latest/develop/tools/cli/
+  - https://redis.io/docs/latest/operate/oss_and_stack/management/security/
+---
+
+[`redis-cli`](https://redis.io/docs/latest/develop/tools/cli/) is the primary diagnostic client for
+Redis. Use it for direct commands, cluster redirection, scanning, latency analysis, memory and key-size
+investigation, pub/sub inspection, and reproducing client behavior without application code.
+
+Install the Redis package when the CLI is needed locally, then verify which binary is active:
+
+```bash
+brew install redis
+command -v redis-cli
+redis-cli --version
+```
+
+Basic connectivity should use a non-sensitive URI or explicit host and port:
+
+```bash
+redis-cli -h localhost -p 6379 PING
+```
+
+For remote services, use TLS and the required CA configuration. Avoid putting passwords inside a
+Redis URI or `-a` argument because process listings and shell history can expose them. The official CLI
+documentation recommends safer authentication mechanisms such as `REDISCLI_AUTH`, but a secret
+manager or masked interactive prompt should own how the value reaches the process.
+
+## Safe investigation
+
+- Use `SCAN` rather than `KEYS *` on a production database.
+- Use `--scan`, `--bigkeys`, `--memkeys`, or `--keystats` deliberately and understand their workload.
+- In cluster mode, use `-c` when the client should follow redirections.
+- Confirm the logical database and cluster before changing a key.
+- Treat `MONITOR`, broad scans, large value reads, and diagnostic modes as potentially expensive.
+- Never run `FLUSHALL`, `FLUSHDB`, broad `DEL`/`UNLINK`, failover, or configuration changes without an
+  approved procedure and verified target.
+
+Redis is commonly both data and infrastructure coordination. A seemingly small key edit can alter
+sessions, rate limits, locks, queues, caches, or application correctness.
+
+## Official references
+
+- [Redis CLI](https://redis.io/docs/latest/develop/tools/cli/) for connection flags and diagnostic
+  modes.
+- [Redis security](https://redis.io/docs/latest/operate/oss_and_stack/management/security/) for ACL,
+  network, and TLS considerations.
+- [Redis commands](https://redis.io/docs/latest/commands/) for exact command semantics and complexity.

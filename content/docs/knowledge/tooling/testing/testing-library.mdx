@@ -1,0 +1,27 @@
+---
+title: Testing Library
+description: Testing rendered interfaces through user-observable queries and behavior.
+tags:
+  - testing-library
+  - react
+  - testing
+status: growing
+sources:
+  - https://testing-library.com/docs/guiding-principles/
+---
+
+## Why use it
+
+Testing Library encourages tests to find and operate controls through accessible roles, labels, and
+visible content. This makes tests less dependent on component internals.
+
+## Use it when
+
+- component behavior can be proven in a DOM environment;
+- accessibility semantics should form part of the test contract; or
+- tests are too coupled to state, methods, or implementation-specific selectors.
+
+## Avoid or limit it when
+
+Do not use DOM rendering for pure functions. It also cannot replace real-browser tests for navigation,
+layout, browser APIs, or complete application integration.

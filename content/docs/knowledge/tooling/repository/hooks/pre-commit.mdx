@@ -1,0 +1,28 @@
+---
+title: pre-commit
+description: A framework for installing and pinning file-oriented Git hooks across languages.
+tags:
+  - pre-commit
+  - git-hooks
+  - python
+status: growing
+sources:
+  - https://pre-commit.com/
+---
+
+## Why use it
+
+The pre-commit framework downloads pinned hook environments and runs checks against selected files.
+It works especially well for Python repositories using Ruff plus general whitespace, syntax, and
+repository-hygiene hooks.
+
+## Use it when
+
+- Python is the primary contributor ecosystem;
+- checks come from several languages but are naturally file-oriented; or
+- reproducible hook revisions matter more than a Node-native workflow.
+
+## Avoid or limit it when
+
+Do not install it alongside Husky without naming one hook owner. Run slow integration tests and
+builds through project commands or CI rather than turning every commit into the entire pipeline.

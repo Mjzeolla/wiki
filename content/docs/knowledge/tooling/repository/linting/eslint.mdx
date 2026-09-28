@@ -1,0 +1,28 @@
+---
+title: ESLint
+description: Configurable semantic linting for JavaScript and TypeScript.
+tags:
+  - eslint
+  - javascript
+  - typescript
+status: growing
+sources:
+  - https://eslint.org/docs/latest/use/getting-started
+---
+
+## Why use it
+
+ESLint catches suspicious or disallowed JavaScript and TypeScript patterns that a formatter cannot.
+Framework presets can add rules aware of React, Next.js, imports, accessibility, or runtime details.
+
+## Use it when
+
+- JavaScript or TypeScript behavior needs static checks beyond compilation;
+- a framework publishes a supported configuration; or
+- architectural or safety rules can be expressed with low false-positive rates.
+
+## Avoid or limit it when
+
+Do not duplicate Prettier's formatting responsibility in ESLint. Start from the framework-supported
+flat configuration, add rules only with a clear defect or convention behind them, and avoid type-aware
+rules whose cost exceeds their signal.

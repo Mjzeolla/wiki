@@ -1,0 +1,28 @@
+---
+title: Zod
+description: TypeScript-first runtime schema validation with inferred static types.
+tags:
+  - zod
+  - validation
+  - typescript
+status: growing
+sources:
+  - https://zod.dev/
+---
+
+## Why use it
+
+Zod validates values that exist at runtime and can infer TypeScript types from the same schema. It
+closes the gap left by TypeScript's erased compile-time types.
+
+## Use it when
+
+- parsing environment variables, API payloads, form data, URLs, files, or queue messages;
+- external data must be transformed or rejected before entering trusted code; or
+- a schema should be the source of truth for both validation and a TypeScript type.
+
+## Avoid or limit it when
+
+Do not validate every internal object repeatedly. Once data has crossed a validated boundary, normal
+TypeScript types are usually enough. Prefer a framework's native compatible schema system when it
+already drives validation and serialization without duplicating definitions.

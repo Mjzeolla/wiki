@@ -1,0 +1,38 @@
+---
+title: Choosing AI Development Helpers
+description: Matching coding-agent helpers to repository-context and research bottlenecks.
+tags:
+  - ai-agents
+  - mcp
+  - code-search
+status: growing
+sources:
+  - https://github.com/yamadashy/repomix
+  - https://github.com/oraios/serena
+  - https://github.com/upstash/context7
+  - https://ast-grep.github.io/
+---
+
+| Bottleneck                   | Helper      | What it contributes                                    |
+| ---------------------------- | ----------- | ------------------------------------------------------ |
+| Noisy shell output           | RTK         | Command-aware filtering and compact failure summaries  |
+| Portable repository snapshot | Repomix     | Packs selected repository content for another model    |
+| Symbol-aware code operations | Serena      | MCP-based semantic retrieval, editing, and refactoring |
+| Current library APIs         | Context7    | Retrieves version-specific documentation and examples  |
+| Syntax-aware search/rewrites | ast-grep    | Structural patterns and reviewable codemods            |
+| Cross-repository discovery   | Sourcegraph | Search and code navigation across indexed repositories |
+
+## Selection boundaries
+
+- Prefer live targeted search over Repomix when the agent already has repository access. Packed
+  snapshots become stale and may include secrets or irrelevant files unless carefully filtered.
+- Serena is valuable for large codebases when the client lacks equivalent symbol tools. Its MCP
+  server can read and edit code, so permissions and upstream installation instructions matter.
+- Context7 helps with changing third-party APIs, but retrieved community documentation still needs
+  verification against authoritative sources for security-sensitive or exact claims.
+- ast-grep is useful even without AI when a syntax-aware query or codemod is safer than regex.
+- Sourcegraph becomes compelling when the relevant code graph spans repositories that local search
+  cannot see.
+
+Do not install this entire table. Choose the smallest set that solves a current bottleneck, document
+its access to code or external services, and retain a native fallback.

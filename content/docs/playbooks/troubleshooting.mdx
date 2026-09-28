@@ -1,0 +1,30 @@
+---
+title: Troubleshooting Playbooks
+description: Repeatable diagnostic procedures organized by observable symptoms.
+tags:
+  - troubleshooting
+  - playbooks
+status: growing
+---
+
+Troubleshooting playbooks begin with an observable symptom rather than a presumed cause. Their goal
+is to narrow the failing layer safely and leave enough evidence for recovery or escalation.
+
+## Diagnostic shape
+
+1. Define the exact symptom, scope, start time, and last known-good state.
+2. Check recent deployments, configuration, dependency, traffic, and infrastructure changes.
+3. Gather logs, metrics, traces, status, and representative failed requests without destroying the
+   original evidence.
+4. Divide the request path into layers and use one discriminating check to identify the failing side.
+5. Form a falsifiable hypothesis and change one variable at a time.
+6. Mitigate only after understanding its risk, blast radius, and reversal path.
+7. Verify user-visible recovery and record the root cause or remaining uncertainty.
+
+Each symptom page should include expected healthy signals, commands that are safe by default, common
+cause classes, stop conditions, and escalation evidence. Separate diagnosis from destructive repair.
+Restarting, clearing caches, increasing limits, or deleting state may hide the symptom without
+identifying the cause.
+
+Link the final diagnosis to the knowledge page explaining the underlying behavior and to a dedicated
+recovery playbook when remediation is repeatable.

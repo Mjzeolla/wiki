@@ -1,0 +1,36 @@
+---
+title: Go Fundamentals
+description: Core language semantics, types, interfaces, errors, packages, and modules.
+tags:
+  - go
+  - fundamentals
+status: growing
+sources:
+  - https://go.dev/ref/spec
+  - https://go.dev/doc/effective_go
+  - https://go.dev/ref/mod
+---
+
+## Mental model
+
+Go organizes source into packages and distributes related packages as modules. A package is the
+compilation and visibility boundary; a module, declared by `go.mod`, is the versioned dependency and
+release boundary.
+
+- Names beginning with an uppercase letter are exported from a package.
+- Interfaces are satisfied implicitly. Define small interfaces where they are consumed rather than
+  mirroring an implementation's complete method set.
+- Zero values should be useful where practical. Constructors are most valuable when invariants,
+  required dependencies, or resource ownership cannot be represented by a zero value.
+- Slices describe a view over an array; maps and slices are reference-like descriptors and need
+  deliberate ownership when shared across goroutines.
+- Errors are ordinary values. Add context while preserving identity with `%w`, test with `errors.Is`
+  or `errors.As`, and reserve panics for unrecoverable programmer or initialization failures.
+- `context.Context` carries cancellation, deadlines, and request-scoped values across boundaries. It
+  is passed explicitly and should not be stored in long-lived structs.
+- Goroutines make concurrency cheap, not automatically safe. Establish which goroutine owns mutable
+  state, who closes channels, and how work is cancelled before launching it.
+
+Prefer straightforward control flow, concrete types, and the standard library until an abstraction
+removes demonstrated duplication or establishes a necessary boundary. Add focused child pages when a
+topic such as interfaces, error chains, generics, or the memory model grows beyond this overview.

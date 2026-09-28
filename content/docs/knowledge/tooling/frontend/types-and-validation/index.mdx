@@ -1,0 +1,22 @@
+---
+title: Types and Validation
+description: Separate compile-time TypeScript guarantees from runtime validation at trust boundaries.
+tags:
+  - typescript
+  - validation
+status: growing
+---
+
+Type safety and runtime validation solve different parts of the same problem:
+
+| Tool                       | Runs when                | Owns                                                       |
+| -------------------------- | ------------------------ | ---------------------------------------------------------- |
+| [TypeScript](./typescript) | During development/build | Internal contracts, refactoring safety, and editor tooling |
+| [Zod](./zod)               | At runtime               | Parsing and validating values from untrusted boundaries    |
+
+Use TypeScript throughout a maintained JavaScript codebase. Add runtime schemas where values enter
+from APIs, forms, environment variables, files, URLs, queues, or persisted storage. After a value is
+validated and converted into a trusted domain type, avoid repeatedly parsing it inside every layer.
+
+Prefer schemas near the boundary or domain that owns them. A shared schemas directory should contain
+only contracts with multiple genuine consumers, not every feature's validation logic.

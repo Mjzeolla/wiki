@@ -1,0 +1,28 @@
+---
+title: tailwind-merge
+description: Resolving contradictory Tailwind utility classes during class composition.
+tags:
+  - tailwind-merge
+  - tailwind-css
+  - react
+status: growing
+sources:
+  - https://github.com/dcastil/tailwind-merge
+---
+
+## Why use it
+
+`tailwind-merge` understands groups of Tailwind utilities and keeps the intended winner when composed
+inputs contain conflicts such as two background colors or competing padding utilities.
+
+## Use it when
+
+- reusable components accept consumer `className` overrides;
+- several variant or conditional sources can emit conflicting Tailwind utilities; or
+- a shared `cn()` helper needs both conditional joining and Tailwind-aware conflict resolution.
+
+## Avoid or limit it when
+
+Prefer not to generate conflicts in the first place. `tailwind-merge` adds runtime work and must
+understand custom Tailwind configuration. It does not replace `clsx`: `clsx` constructs a class
+string, while `tailwind-merge` interprets Tailwind conflicts in that string.

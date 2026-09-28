@@ -1,0 +1,50 @@
+---
+title: First-Hour Checklist
+description: Establish identity, updates, encryption, recovery, and a minimal trusted base.
+tags:
+  - macos
+  - setup
+  - security
+status: growing
+---
+
+## Before installing developer tools
+
+- Install current macOS updates and restart.
+- Choose a strong login password and configure Touch ID where available.
+- Confirm Find My Mac and device-recovery settings match the machine's ownership model.
+- Turn on FileVault and store its recovery method somewhere other than the Mac.
+- Configure Time Machine or another tested backup destination.
+- Install password-manager and multifactor-authentication applications from their official
+  distribution channels.
+- Decide whether this is a personal, employer-managed, or mixed-use machine before signing into
+  accounts or copying credentials.
+
+For a managed work Mac, follow the organization's device-management and security policy before
+this personal playbook. Do not install conflicting endpoint, VPN, certificate, or account tools.
+
+## Establish the command-line base
+
+Install Apple's Command Line Tools when a tool actually requires them:
+
+```bash
+xcode-select --install
+```
+
+Then install Homebrew using the command currently published on the
+[Homebrew homepage](https://brew.sh/), not a copied historical installer. Follow the installer's
+printed `brew shellenv` instructions and verify:
+
+```bash
+brew --version
+brew doctor
+```
+
+`brew doctor` findings are diagnostics, not a mandate to delete every non-Homebrew file.
+
+## Proof of completion
+
+- the Mac is updated and disk recovery is understood;
+- a backup can be started and its destination is visible;
+- credentials live in a password manager rather than shell history or dotfiles;
+- `brew --version` works in a newly opened terminal.

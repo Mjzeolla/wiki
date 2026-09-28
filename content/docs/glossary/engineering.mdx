@@ -1,0 +1,53 @@
+---
+title: Engineering Glossary
+description: Definitions for software engineering terminology.
+tags:
+  - engineering
+  - glossary
+status: growing
+---
+
+## Core terms
+
+**Abstraction**
+: A boundary that exposes a smaller, stable model while hiding details that callers should not own.
+A wrapper that only renames an API without reducing coupling is not necessarily a useful abstraction.
+
+**Cohesion**
+: How closely the responsibilities inside a module belong together. High cohesion makes ownership
+and reasons for change easier to understand.
+
+**Coupling**
+: The degree to which one component depends on another's contract, behavior, timing, or deployment.
+Coupling is unavoidable; make it explicit and point dependencies toward stable owners.
+
+**Invariant**
+: A condition that must remain true across valid state transitions. Enforce invariants at the layer
+that owns the state rather than relying on every caller to remember them.
+
+**Regression**
+: Previously working behavior that becomes incorrect after a change. A regression test proves the
+failure before the fix and prevents its return.
+
+**Technical debt**
+: A known design or implementation tradeoff that increases the cost or risk of future change. Debt
+should describe a concrete consequence, not act as a synonym for disliked code.
+
+**Backward compatibility**
+: New software continues to accept or support contracts produced for an earlier version. Compatibility
+can apply to APIs, schemas, configuration, files, events, and operational procedures.
+
+**Breaking change**
+: A change that requires consumers to modify their behavior, data, or integration. Versioning alone
+does not make migration safe; communicate impact and provide a transition path.
+
+**Dependency inversion**
+: Higher-level policy depends on an owned abstraction rather than a lower-level implementation detail.
+It is about dependency direction, not simply adding interfaces everywhere.
+
+**Observability**
+: The ability to infer system state and explain behavior from emitted evidence such as metrics, logs,
+traces, profiles, and domain events.
+
+Create a focused term page when a definition needs examples, counterexamples, diagrams, or related
+decision guidance that would make this page difficult to scan.

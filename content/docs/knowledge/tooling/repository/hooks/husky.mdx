@@ -1,0 +1,27 @@
+---
+title: Husky
+description: Version-controlled native Git hooks for Node-oriented repositories.
+tags:
+  - husky
+  - git-hooks
+status: growing
+sources:
+  - https://typicode.github.io/husky/get-started.html
+---
+
+## Why use it
+
+Husky keeps Git hook scripts in the repository and installs them through the package lifecycle. It
+is a natural fit when every contributor already installs Node dependencies.
+
+## Use it when
+
+- Node is a required repository runtime;
+- fast checks should run before commits or pushes; or
+- hook behavior should be reviewed and versioned with the code.
+
+## Avoid or limit it when
+
+Do not introduce Node only to manage hooks in a Python- or Go-only project. Hooks are local feedback,
+not enforcement: developers can bypass them, so CI must repeat required validation. Keep pre-commit
+fast; move full builds and long suites to pre-push or CI.

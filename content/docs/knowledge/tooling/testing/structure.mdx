@@ -1,0 +1,58 @@
+---
+title: Test Suite Structure
+description: Organizing colocated tests, integration suites, shared support, fixtures, and configuration.
+tags:
+  - testing
+  - repository-structure
+status: growing
+---
+
+Keep fast tests close to their owner when proximity improves discovery. Put cross-feature integration,
+contract, end-to-end, performance, and shared test infrastructure in explicit top-level suites.
+
+```text
+src/
+└── domains/
+    └── billing/
+        ├── services/
+        │   ├── calculate-total.ts
+        │   └── calculate-total.test.ts
+        └── testing/
+            └── builders/
+tests/
+├── integration/
+│   └── billing/
+├── contract/
+├── fixtures/
+│   ├── files/
+│   └── payloads/
+├── support/
+│   ├── builders/
+│   ├── factories/
+│   ├── fakes/
+│   ├── matchers/
+│   └── servers/
+└── config/
+e2e/
+└── support/
+```
+
+Create only folders with real contents. Avoid `test_utils.ts`, `helpers.py`, or one shared file that
+becomes a dump.
+
+## Ownership
+
+- Builders create valid in-memory domain values with explicit overrides.
+- Factories create persisted or externally backed state and own cleanup.
+- Fixtures are stable input artifacts such as JSON, certificates, or golden files.
+- Fakes implement meaningful boundary behavior deterministically.
+- Matchers give domain assertions useful failure messages.
+- Servers own test HTTP, queue, or other protocol harnesses.
+- Configuration owns runner-wide timeouts, projects, coverage exclusions, reports, and aliases.
+
+Feature-specific support stays with the feature. Move it to cross-suite support only after multiple
+independent consumers need the same stable contract. Keep global setup small because hidden environment,
+clock, network, or mock changes couple every test.
+
+Expose focused commands—unit, integration, contract, and E2E—plus one aggregate test command. CI can
+parallelize behind those entrypoints without making local and hosted behavior diverge.

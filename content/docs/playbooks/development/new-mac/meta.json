@@ -1,0 +1,14 @@
+{
+  "title": "Set Up a New Mac",
+  "pagesIndex": "index",
+  "pages": [
+    "index",
+    "first-hour",
+    "terminal-and-shell",
+    "command-history-and-navigation",
+    "packages-and-apps",
+    "developer-toolchain",
+    "dotfiles-and-automation",
+    "security-and-backups"
+  ]
+}

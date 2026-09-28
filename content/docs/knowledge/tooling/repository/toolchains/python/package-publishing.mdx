@@ -1,0 +1,59 @@
+---
+title: Publishing Python Packages
+description: Building, validating, and securely publishing wheels and source distributions to PyPI-compatible indexes.
+tags:
+  - python
+  - pypi
+  - packaging
+  - publishing
+status: growing
+sources:
+  - https://packaging.python.org/en/latest/tutorials/packaging-projects/
+  - https://packaging.python.org/en/latest/flow/
+  - https://packaging.python.org/en/latest/guides/tool-recommendations/
+  - https://docs.astral.sh/uv/guides/package/
+  - https://python-poetry.org/
+---
+
+Python packages are published to an index such as PyPI, not to pip. pip is one installer that
+downloads the published distributions.
+
+## Build distributions
+
+Declare project metadata and a build backend in `pyproject.toml`. The backend determines package
+contents and metadata; a frontend such as `uv build`, `python -m build`, or `poetry build` invokes the
+build and writes artifacts under `dist/`.
+
+A normal pure-Python release includes both:
+
+- a source distribution (`.tar.gz`) so downstream users can rebuild it; and
+- a wheel (`.whl`) for fast installation without rebuilding.
+
+Build from a clean checkout, inspect both archives, check the rendered README, and install the wheel
+into a clean environment. For uv-managed projects, `uv build --no-sources` helps catch unpublished
+workspace or local-source dependencies before release.
+
+## Test before production
+
+Publish a candidate to TestPyPI or an internal staging index, then install the exact version from
+that index in a clean environment. Verify imports, console entry points, metadata, supported Python
+versions, included data files, and any platform-specific wheels.
+
+## Upload securely
+
+Use one release frontend consistently:
+
+```bash
+uv publish
+poetry publish
+python -m twine upload dist/*
+```
+
+Prefer PyPI trusted publishing from a protected CI environment when supported. It exchanges the CI
+workload identity for a short-lived credential instead of storing a long-lived API token. For manual
+or unsupported-index publishing, use a project-scoped token from a secret manager; never commit it to
+`pyproject.toml`, `.pypirc`, shell history, or repository examples.
+
+Published filenames for a version cannot be replaced safely. Treat version selection, tag protection,
+artifact inspection, and approval as release controls. After upload, install from the production
+index and verify the package page and artifacts. Release a new version to correct a bad artifact.

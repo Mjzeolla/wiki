@@ -1,0 +1,27 @@
+---
+title: TypeScript
+description: Compile-time type checking for JavaScript applications and libraries.
+tags:
+  - typescript
+  - javascript
+status: growing
+sources:
+  - https://www.typescriptlang.org/docs/
+---
+
+## Why use it
+
+TypeScript describes program shapes and catches incompatible operations before runtime. It improves
+refactoring, editor navigation, and contracts inside a JavaScript codebase.
+
+## Use it when
+
+- an application or library has meaningful data and API contracts;
+- code will be maintained by several people or over time; or
+- refactoring safety is worth a compile step.
+
+## Avoid or limit it when
+
+TypeScript types are erased during compilation, so they do not validate API responses, environment
+variables, form submissions, or persisted data. Use a runtime validator such as Zod at those trust
+boundaries. Small disposable scripts may not justify a TypeScript toolchain.

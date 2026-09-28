@@ -1,0 +1,19 @@
+[tools]
+node = "22"
+pnpm = "11.20.0"
+lychee = "0.21.0"
+
+[settings]
+lockfile = true
+
+[tasks.setup]
+description = "Install dependencies and Husky hooks"
+run = "pnpm install --frozen-lockfile"
+
+[tasks.check]
+description = "Run repository checks"
+run = "pnpm check"
+
+[tasks.ci]
+description = "Run the complete local CI suite"
+run = "pnpm run ci"

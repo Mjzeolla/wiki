@@ -1,0 +1,20 @@
+---
+title: Testing Tools
+description: Choosing unit, component, and browser testing tools for TypeScript applications.
+tags:
+  - testing
+  - typescript
+status: growing
+---
+
+- [Vitest](./vitest) runs fast unit and integration tests in Vite-friendly TypeScript projects.
+- [Testing Library](./testing-library) tests UI behavior through user-observable semantics.
+- [Playwright](./playwright) verifies critical flows in real browser engines.
+- [Testing strategy](./strategy) explains how unit, component, integration, contract, browser, and
+  smoke tests fit together.
+- [Test structure](./structure) organizes shared configuration, fixtures, builders, factories,
+  fakes, matchers, and environment setup.
+- Language guides: [TypeScript and React](./typescript), [Python](./python), and [Go](./go).
+
+Use the lowest test level that proves the behavior. Keep a small number of browser tests for risks
+that unit or component tests cannot represent.

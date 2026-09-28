@@ -1,0 +1,71 @@
+---
+title: Redux Toolkit
+description: Modern Redux for deliberate, observable shared client state.
+tags:
+  - react
+  - redux
+  - state-management
+status: growing
+sources:
+  - https://redux.js.org/introduction/getting-started
+  - https://redux.js.org/introduction/why-rtk-is-redux-today
+  - https://redux.js.org/redux-toolkit/overview
+  - https://redux.js.org/usage/nextjs
+---
+
+[Redux Toolkit](https://redux-toolkit.js.org/) is the official, recommended way to write Redux
+applications. For new code, use `@reduxjs/toolkit` and React Redux rather than assembling a store
+from the legacy `redux` package and hand-writing reducers, action constants, or immutable updates.
+
+## Use it when
+
+- multiple distant features coordinate complex mutable client state;
+- state transitions benefit from named events and a predictable reducer model;
+- Redux DevTools, action history, middleware, or centralized policy materially help debugging;
+- a large team needs explicit ownership and conventions for shared state; or
+- an existing application already has a well-structured Redux architecture.
+
+Do not add Redux solely because several components need the same value. Component composition,
+context, URL state, or a colocated reducer may be enough. Do not manually copy fetched resources into
+slices when a server-state layer should own caching and synchronization.
+
+## Core structure
+
+Organize Redux by application domain, not by dumping every slice into one global folder:
+
+```text
+src/
+├── app/
+│   └── store/
+│       ├── hooks.ts
+│       └── store.ts
+└── domains/
+    └── checkout/
+        ├── state/
+        │   ├── selectors.ts
+        │   ├── slice.ts
+        │   └── types.ts
+        ├── components/
+        └── index.ts
+```
+
+- `configureStore` creates the store and applies sensible defaults.
+- `createSlice` keeps state, reducers, and generated action creators together.
+- Typed application hooks keep `RootState` and `AppDispatch` details out of components.
+- Selectors expose read models without leaking the state tree throughout the UI.
+- Listener middleware or thunks coordinate effects; reducers remain deterministic.
+
+Keep reusable domain logic independent of React components. Avoid a single `slices/`, `types.ts`, or
+`selectors.ts` file that grows into a repository-wide dump.
+
+## Next.js considerations
+
+In a Next.js App Router application, do not export one process-global store. Create a store per
+request, provide it through a client component, and use Redux only in client components. Avoid using
+Redux for data that is already well owned by React Server Components or the framework cache.
+
+## Relationship to query tools
+
+[RTK Query](./rtk-query) is included with Redux Toolkit and integrates remote-data caching into the
+Redux store. [TanStack Query](./tanstack-query) provides a separate query cache and does not require
+Redux. Redux Toolkit can still own complex client state when TanStack Query owns server state.

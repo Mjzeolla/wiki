@@ -1,0 +1,4 @@
+{
+  "title": "Go",
+  "pages": ["index", "fundamentals", "concurrency", "tooling", "testing"]
+}

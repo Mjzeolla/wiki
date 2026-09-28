@@ -1,0 +1,35 @@
+---
+title: Testing Strategy
+description: Selecting test layers that prove behavior without making suites slow or brittle.
+tags:
+  - testing
+  - quality
+status: growing
+---
+
+Testing is part of the repository foundation. A feature is not complete merely because it compiles;
+the suite should prove important behavior and the production artifact should receive a smoke check.
+
+| Layer       | Best for                                          | Typical tools                             |
+| ----------- | ------------------------------------------------- | ----------------------------------------- |
+| Unit        | Pure logic, parsers, policies, transformations    | Vitest, pytest, Go `testing`              |
+| Component   | UI behavior through a component's public surface  | Testing Library                           |
+| Integration | Databases, queues, filesystems, and real adapters | Ecosystem runner plus test dependencies   |
+| Contract    | API, event, SDK, or schema compatibility          | Schema tests and consumer/provider checks |
+| End-to-end  | Critical user journeys in a complete application  | Playwright                                |
+| Smoke       | The built package, binary, image, or site starts  | Small repository-specific scripts         |
+
+## Principles
+
+- Use the lowest layer capable of detecting the failure.
+- Keep critical real boundaries real; do not mock away the database or protocol behavior being
+  tested.
+- Control time, randomness, environment, and external state so failures are reproducible.
+- Separate fast tests from slow suites using commands such as `test:unit`, `test:integration`, and
+  `test:e2e`, plus an aggregate `test` command.
+- Publish useful failure evidence such as Playwright traces, logs, coverage reports, or rendered
+  output, while excluding secrets.
+- Use coverage to reveal untested areas, not as a proxy for meaningful assertions.
+
+Run fast tests locally and in hooks when practical. CI should run every required layer from a clean,
+locked environment.

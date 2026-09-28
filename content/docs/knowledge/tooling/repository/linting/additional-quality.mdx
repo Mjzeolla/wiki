@@ -1,0 +1,33 @@
+---
+title: Additional Repository Quality Tools
+description: Optional checks to add when their signal and maintenance cost fit the repository.
+tags:
+  - tooling
+  - quality
+status: growing
+sources:
+  - https://github.com/lint-staged/lint-staged
+  - https://stylelint.io/
+  - https://knip.dev/
+  - https://www.shellcheck.net/
+---
+
+| Technology     | Why it exists                                      | Use it when                                                 |
+| -------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| lint-staged    | Run commands only against staged files             | Whole-tree hooks are too slow and staged semantics are safe |
+| Stylelint      | Analyze CSS-specific syntax and conventions        | The repository owns substantial standalone CSS              |
+| Knip           | Find unused JS/TS files, exports, and dependencies | Framework entrypoints and generated files can be modeled    |
+| ShellCheck     | Detect defects and portability issues in shell     | Shell scripts are maintained as real repository code        |
+| actionlint     | Validate GitHub Actions syntax and expressions     | GitHub Actions workflows are part of delivery               |
+| Lychee         | Check links in Markdown, HTML, and other documents | Links are an important maintained product surface           |
+| yamllint       | Validate YAML structure and style                  | YAML volume justifies shared conventions                    |
+| typos          | Detect likely spelling mistakes quickly            | A maintained allowlist can keep false positives low         |
+| secret scanner | Detect committed credential patterns               | The repository has a triage and baseline process            |
+
+Add these incrementally. A check that routinely produces unexplained false positives teaches
+contributors to ignore CI. External link checks are network-dependent, so separate fast local-link
+validation from slower full checks when needed.
+
+Docker is different: it packages a runtime or development environment rather than checking source.
+Add it when deployment, integration dependencies, or reproducibility require an image—not as a
+universal marker of repository maturity.

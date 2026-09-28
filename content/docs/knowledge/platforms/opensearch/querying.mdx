@@ -1,0 +1,74 @@
+---
+title: Querying OpenSearch
+description: Query DSL, relevance, filters, aggregations, and search behavior.
+tags:
+  - opensearch
+  - querying
+status: growing
+sources:
+  - https://docs.opensearch.org/latest/query-dsl/query-filter-context/
+  - https://docs.opensearch.org/latest/query-dsl/compound/bool/
+  - https://docs.opensearch.org/latest/aggregations/
+---
+
+OpenSearch queries combine retrieval, relevance, filtering, sorting, and aggregations. Start from the
+field mapping: querying a `text` field as though it were an exact keyword—or aggregating an analyzed
+field—usually produces surprising results.
+
+## Query versus filter context
+
+[Query context](https://docs.opensearch.org/latest/query-dsl/query-filter-context/) asks how well a
+document matches and produces `_score`. Filter context asks only whether a document matches, skips
+scoring, and is suitable for exact values, ranges, permissions, dates, and other constraints.
+
+Use a `bool` query to compose behavior:
+
+- `must`: required clauses that contribute to score;
+- `should`: optional or minimum-match clauses that can improve score;
+- `filter`: required yes/no constraints that do not contribute to score; and
+- `must_not`: excluded documents.
+
+```json
+{
+  "query": {
+    "bool": {
+      "must": [{ "match": { "description": "wireless headphones" } }],
+      "filter": [{ "term": { "status": "available" } }, { "range": { "price": { "lte": 200 } } }]
+    }
+  }
+}
+```
+
+Use `match` for analyzed full text and `term` for exact indexed values. Prefer query DSL generated
+from typed application inputs over accepting unrestricted query-string syntax from users.
+
+## Relevance
+
+Relevance is an application behavior, not merely a query parameter. Maintain a representative judged
+query set, inspect explanations for unexpected scores, and measure ranking changes before tuning
+boosts, analyzers, synonyms, or function scores. Pagination and sorting must include deterministic
+tie-breaking when stable traversal matters.
+
+## Aggregations and facets
+
+Aggregations summarize matching documents. Bucket aggregations group values; metric aggregations
+calculate values such as counts or percentiles. Apply a query-level filter when both hits and facets
+should share the constraint. Use `post_filter` only when hits should reflect a selected facet while
+the aggregation must preserve broader options.
+
+Protect the cluster from unbounded query complexity: limit page size, aggregation cardinality,
+wildcards, nested Boolean expansion, script use, and request time. Profile representative slow
+queries, but remember that profiling adds overhead and is a diagnostic tool rather than a production
+default.
+
+## Official references
+
+- [Query DSL](https://docs.opensearch.org/latest/query-dsl/) for the maintained query-type catalog.
+- [Query and filter context](https://docs.opensearch.org/latest/query-dsl/query-filter-context/) for
+  scoring versus yes/no constraints.
+- [Boolean queries](https://docs.opensearch.org/latest/query-dsl/compound/bool/) for `must`, `should`,
+  `filter`, `must_not`, and minimum-match behavior.
+- [Aggregations](https://docs.opensearch.org/latest/aggregations/) for bucket, metric, and pipeline
+  aggregation reference material.
+- [Search APIs](https://docs.opensearch.org/latest/api-reference/search-apis/) for endpoint parameters,
+  pagination, profiling, and related request contracts.

@@ -1,0 +1,135 @@
+---
+title: Command History and Navigation
+description: Preserve useful shell history, retrieve old commands quickly, and navigate repeated directories safely.
+tags:
+  - zsh
+  - atuin
+  - fzf
+  - zoxide
+status: growing
+sources:
+  - https://docs.atuin.sh/
+  - https://github.com/junegunn/fzf
+  - https://github.com/ajeetdsouza/zoxide
+  - https://github.com/nvbn/thefuck
+---
+
+Remembering every command is less useful than making successful commands easy to retrieve. Start
+with durable Zsh history, add fuzzy search, and adopt synchronized history only after deciding how
+sensitive commands should be handled.
+
+## Durable Zsh history
+
+Keep history configuration in the Zsh-owned configuration layer:
+
+```zsh title="~/.config/zsh/history.zsh"
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+
+setopt APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt HIST_IGNORE_SPACE
+```
+
+`SHARE_HISTORY` shares commands across active shells; `EXTENDED_HISTORY` records timestamps and
+durations. `HIST_IGNORE_SPACE` excludes a command beginning with a space, but it is only a guardrail.
+Never put passwords, tokens, private keys, or connection strings containing credentials on the
+command line. Prefer an interactive prompt, a secret manager, or a scoped environment injection.
+
+Useful built-ins include:
+
+```bash
+history 20
+fc -l -20
+fc -R ~/.zsh_history
+```
+
+Back up history only if the backup has the same privacy protection as the Mac. Shell history often
+reveals internal hostnames, repository names, filenames, and operational habits even when it contains
+no explicit secret.
+
+## Fuzzy history with fzf
+
+[`fzf`](https://github.com/junegunn/fzf) adds interactive fuzzy selection. Its shell integration
+binds `Control-R` to search history and insert the chosen command for review before execution.
+
+```bash
+brew install fzf
+```
+
+Follow the project's current shell-integration instructions rather than copying an old sourced script.
+Use `Control-R` as retrieval, not blind replay: inspect destructive flags, environment, target paths,
+and cluster or account context before pressing Enter.
+
+## Context-rich history with Atuin
+
+[`Atuin`](https://docs.atuin.sh/) stores shell history in a local database with context such as
+directory, exit status, duration, host, and session. Optional synchronization is end-to-end encrypted
+and can use the hosted service or a self-hosted server.
+
+```bash
+brew install atuin
+atuin import auto
+atuin doctor
+```
+
+Start locally before enabling sync. If sync is enabled, store the encryption key in the password
+manager: losing it can make synchronized history unrecoverable. Review filtering settings and avoid
+recording secrets rather than assuming encryption makes unsafe command construction harmless.
+
+Choose either Atuin's history search or the simpler `fzf` history binding as the primary `Control-R`
+owner. Do not stack competing widgets on the same key binding without a deliberate configuration.
+
+## Directory navigation with zoxide
+
+[`zoxide`](https://github.com/ajeetdsouza/zoxide) ranks frequently and recently visited directories,
+letting `z project-name` replace repeated long `cd` paths.
+
+```bash
+brew install zoxide
+```
+
+Activate it using the current Zsh initialization command in the official documentation. Keep normal
+`cd` available, and inspect the destination with `pwd` before running a consequential command after a
+fuzzy jump.
+
+## Correcting the previous command with The Fuck
+
+[`thefuck`](https://github.com/nvbn/thefuck) examines the previous failed command and proposes a
+corrected command. It can fix misspelled subcommands, missing flags, incorrect paths, and common Git,
+package-manager, or shell mistakes.
+
+```bash
+brew install thefuck
+```
+
+Add its generated alias to the Zsh integrations layer rather than mixing it into unrelated aliases:
+
+```zsh title="~/.config/zsh/integrations/thefuck.zsh"
+eval "$(thefuck --alias)"
+```
+
+The default generated alias is `fuck`, although the tool supports choosing another alias. After a
+command fails, invoke the alias, inspect the proposed replacement, cycle through alternatives when
+necessary, and confirm only the intended command.
+
+Keep confirmation enabled. Some correction rules can add force flags, alter Git state, create
+directories, install packages, or rerun a command with elevated permissions. Never treat a generated
+correction as authorization to execute a destructive, privileged, production, or remote operation.
+
+`thefuck` complements history search rather than replacing it: `fzf` or Atuin retrieves a command you
+previously used, while `thefuck` transforms the immediately preceding failed command.
+
+## Recommended progression
+
+1. Configure durable native Zsh history.
+2. Add `fzf` for fast local retrieval.
+3. Add `zoxide` when repeated directory navigation becomes noticeable.
+4. Add `thefuck` when correcting common failed commands is frequent enough to justify generated
+   suggestions.
+5. Adopt Atuin when contextual search or multi-machine history is worth another local database,
+   encryption key, and optional synchronization service.
