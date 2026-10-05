@@ -1,0 +1,24 @@
+---
+title: HTTP and RPC Protocols
+description: Understand wire contracts, typed RPC, schema evolution, and browser integration.
+tags:
+  - protocols
+status: growing
+sources:
+  - https://grpc.io/docs/what-is-grpc/core-concepts/
+---
+
+An API contract describes how independent programs communicate. Start with HTTP semantics, then
+learn how gRPC adds service definitions, generated clients, and a specific RPC wire protocol.
+
+| Guide                                               | Question it answers                                         |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| [HTTP](./http)                                      | What do requests, methods, status codes, and caches mean?   |
+| [gRPC](./grpc)                                      | How does a typed remote call travel between services?       |
+| [Protobuf contracts](./grpc/protobuf)               | How do messages evolve without breaking consumers?          |
+| [Buf and distribution](./grpc/buf-and-distribution) | Where do schemas live, and how do consumers receive them?   |
+| [React and Go](./grpc/react-and-go)                 | How can a browser call a Go service with a shared contract? |
+
+Use the [Go/React RPC lab](/docs/playbooks/development/grpc-go-react) for a local implementation.
+Transport choices are independent of [frontend rendering](/docs/knowledge/tooling/frontend/frameworks/rendering-models):
+a SPA, server-rendered app, and command-line client may all call the same service.

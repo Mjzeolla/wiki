@@ -1,0 +1,116 @@
+---
+title: Sentry Releases and Data Controls
+description: Make production stacks readable and control event volume, secrets, and captured context.
+tags:
+  - sentry
+  - observability
+status: growing
+sources:
+  - https://docs.sentry.io/platforms/javascript/guides/react/configuration/options/
+  - https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/vite/
+  - https://docs.sentry.io/platforms/javascript/guides/react/data-management/data-collected/
+  - https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/filtering/
+  - https://docs.sentry.io/platforms/javascript/guides/react/session-replay/privacy/
+---
+
+Useful telemetry needs a known build, readable source locations, and an intentional data policy.
+Treat these as part of the integration, rather than waiting until the first production exception.
+
+## DSN versus auth token
+
+| Value               | Purpose                                                      | Where it belongs                                                                 |
+| ------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| DSN                 | Routes SDK events to a Sentry project                        | Browser configuration when instrumenting browsers; server config for server SDKs |
+| `SENTRY_AUTH_TOKEN` | Authenticates build/API operations such as source-map upload | CI secret store or a private local environment                                   |
+| Release identifier  | Identifies the exact deployed artifact                       | Stable value supplied by the build pipeline                                      |
+| Environment         | Separates production, staging, and learning data             | Deployment configuration                                                         |
+
+The browser DSN is visible to users; it is not a secret API credential that permits reading your
+issues. It still identifies an ingestion destination, so review abuse filtering and quotas. Never
+put the auth token in a `VITE_` or `NEXT_PUBLIC_` variable. Source:
+[SDK configuration](https://docs.sentry.io/platforms/javascript/guides/react/configuration/options/).
+
+## Source maps and build identity
+
+A minified JavaScript stack is often difficult to diagnose. Generate and upload maps for the **same
+artifact** you deploy. Modern Sentry bundler integrations use debug identifiers to associate code
+and maps; a release name alone cannot fix mismatched artifacts. Keep the deployed bundle, uploaded
+maps, and release metadata from the same build job.
+
+For Vite, install `@sentry/vite-plugin` and adapt the existing config:
+
+```ts
+import { defineConfig } from 'vite';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+
+export default defineConfig({
+  build: { sourcemap: 'hidden' },
+  plugins: [
+    // Keep existing plugins here; place Sentry last.
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      release: { name: process.env.SENTRY_RELEASE },
+      sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+    }),
+  ],
+});
+```
+
+Provide these variables from the build environment; this snippet does not load an arbitrary `.env`
+file into Vite's `process.env`. `hidden` omits the browser source-map reference but does not itself
+prevent a published map file being downloaded. Check the final deploy artifact and the upload logs.
+The deletion glob must match only this application's generated output. Test a production build;
+normal dev/watch sessions do not exercise the upload pipeline. Source:
+[Vite source maps](https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/vite/).
+
+For Next.js, use its `withSentryConfig` integration rather than this Vite plugin. After deployment,
+trigger one controlled error, confirm the correct environment/release, and inspect the original
+source line. A successful JavaScript build is not proof that the maps reached Sentry.
+
+## SDK 11 data collection
+
+The current JavaScript SDK uses `dataCollection` categories; older examples using `sendDefaultPii`
+do not describe every current default. The [data-collected reference](https://docs.sentry.io/platforms/javascript/guides/react/data-management/data-collected/)
+explains what is collected and how to disable selected categories. The [integration guide](./react-and-nextjs)
+shows an intentionally limited baseline with bodies, cookies, headers, query values, and automatic
+user info disabled.
+
+That policy is not a complete anonymizer. Exception messages, URL paths, custom tags/context,
+breadcrumbs, and explicitly supplied data can still reveal information. Use stable operation names
+and route templates, avoid secrets in URLs, and inspect representative outgoing payloads. Add
+server-side scrubbing rules as another layer.
+
+For error events, `beforeSend` can remove or filter unwanted data; returning `null` drops an event.
+For example, inside the existing `Sentry.init` options:
+
+```ts
+beforeSend(event) {
+  delete event.user;
+  delete event.extra;
+  return event;
+},
+```
+
+This options fragment only removes two event fields. It does not scrub stack messages, every
+breadcrumb, spans, logs, or Replay recordings. Each signal has its own controls; test them rather
+than assuming the error-event callback covers all telemetry. Source:
+[filtering](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/filtering/).
+
+## Replay, sampling, and alert noise
+
+Replay is optional. Its masking, media blocking, and network-detail capture have separate settings
+from `dataCollection`. Review rendered pages with representative synthetic data before unmasking
+content or allowing request/response bodies. See
+[Replay privacy](https://docs.sentry.io/platforms/javascript/guides/react/session-replay/privacy/).
+
+Error-event sampling, trace sampling, and Replay session/error sampling control different streams.
+Reducing `tracesSampleRate` does not reduce every category of event. Start with the data needed to
+answer a question, measure volume, then tune filtering and sampling. Keep synthetic tests in a
+learning project/environment so alert recipients are not confused by intentional failures.
+
+Assign owners to meaningful new/regressed issues. A notification for every occurrence can obscure
+high-impact regressions. Before suppressing an event, check whether it is expected user behavior,
+third-party/browser noise, or an application defect. Record narrow filters so they do not silently
+hide future bugs.

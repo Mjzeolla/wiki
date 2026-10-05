@@ -23,7 +23,8 @@
     "start": "next start",
     "routes:check": "node scripts/ci/check-routes.mjs",
     "test": "pnpm content:check && pnpm routes:check",
-    "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit"
+    "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "build:pages": "node scripts/ci/build-pages.mjs"
   },
   "dependencies": {
     "@knotaru/docs-ui": "0.1.0",

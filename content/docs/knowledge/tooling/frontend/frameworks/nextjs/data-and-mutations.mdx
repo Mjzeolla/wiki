@@ -1,0 +1,86 @@
+---
+title: Data and Mutations
+description: Choose server reads, client data tools, Route Handlers, and Server Actions deliberately.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://nextjs.org/docs/app/getting-started/fetching-data
+  - https://nextjs.org/docs/app/getting-started/mutating-data
+  - https://nextjs.org/docs/app/guides/authentication
+  - https://nextjs.org/docs/app/getting-started/caching
+---
+
+Separate **reading data**, **changing data**, and **keeping displayed data current**. Next.js
+provides several entry points, but the application still owns validation, authorization, and
+freshness requirements.
+
+## Choose the entry point
+
+| Need                                                  | Starting point                                  | Why                                                     |
+| ----------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Initial page content from a database or backend       | Server Component calling a server data function | Avoid an unnecessary browser fetch for initial content  |
+| Browser polling, background refresh, or optimistic UI | Client data library when needed                 | Own the browser's asynchronous data lifecycle           |
+| HTTP interface for external clients or webhooks       | Route Handler                                   | Explicit method, request, status, and response contract |
+| Form or UI mutation tied to this application          | Server Action                                   | Integrates server mutation with the React/Next.js UI    |
+
+Server Components can call a shared data-access function directly. Calling your own Route Handler
+from the server usually adds an unnecessary HTTP hop. Keep reusable business logic outside the
+transport entry point. See [fetching data](https://nextjs.org/docs/app/getting-started/fetching-data)
+and the [backend-for-frontend guide](https://nextjs.org/docs/app/guides/backend-for-frontend).
+
+## Server versus browser ownership
+
+An async Server Component can await a read and render the result. Slow sections can sit behind
+`Suspense` so useful content arrives earlier. Browser interactions can still use
+[TanStack Query](../../state-and-data/tanstack-query) or
+[RTK Query](../../state-and-data/rtk-query) when polling, retries, or client invalidation justify them.
+Avoid duplicating the same data into several caches without defining which one owns freshness.
+
+TypeScript annotations do not validate a backend's JSON. Parse untrusted responses and mutation
+inputs with [Zod](../../types-and-validation/zod) or another validator before depending on their shape.
+
+## Mutation lifecycle
+
+```text
+input → validate → authenticate → authorize resource access → write transaction
+      → invalidate or refresh affected data → return safe result → update UI
+```
+
+The exact ordering of validation and authentication can vary, but authorization must precede the
+protected write. Server Actions are reachable server operations, not private functions made safe
+by the UI. Do not trust an object ID, price, role, or owner supplied by a hidden form input.
+Return useful field errors for expected validation failures and keep sensitive diagnostics in
+server logs. Sources: [mutating data](https://nextjs.org/docs/app/getting-started/mutating-data)
+and [authentication and authorization](https://nextjs.org/docs/app/guides/authentication).
+
+## Cache ownership
+
+Cache ownership means deciding **what is reused, for whom, for how long, and what invalidates it**.
+Server and client caches can both hold the same product list, but they do not automatically stay
+synchronized after a write.
+
+| Owner                | Typical example                                 | Update after a successful write                                                  |
+| -------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| Browser query cache  | TanStack Query result for `['products']`        | Invalidate the matching query or set its data                                    |
+| Next.js server cache | Public catalog read using `use cache` and a tag | Expire/revalidate the tag under the chosen freshness policy                      |
+| Browser router cache | Previously visited/prefetched route payload     | Refresh or navigate as appropriate; server data still needs its own invalidation |
+| HTTP/CDN cache       | Cacheable API response                          | Apply HTTP cache policy and purge/revalidate when required                       |
+
+For example, `queryClient.invalidateQueries({ queryKey: ['products'] })` refreshes browser-owned
+query data; `updateTag('products')` expires tagged server data from a Server Action. Calling
+`router.refresh()` can still read cached server data, and does not clear an unrelated QueryClient.
+
+Read [Client and Server Caching](./caching) for paired React/Next.js code, a cache-lifetime table,
+mutation examples, SSR hydration, and the differences between React `cache`, `useMemo`, and a query
+cache. It explicitly distinguishes Next.js 16 Cache Components from the previous fetch/route model.
+The [rendering comparison](../rendering-models) explains why server execution and request-time
+rendering are separate decisions.
+
+## What to verify
+
+Test rejected input, missing authentication, attempts to change another user's resource, expected
+write failures, and successful writes followed by a fresh read. Also check repeated submissions
+where duplicate writes would matter. For reusable test strategy, see
+[testing](/docs/knowledge/tooling/testing).

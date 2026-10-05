@@ -1,0 +1,68 @@
+---
+title: gRPC
+description: Typed remote calls, HTTP/2 streams, deadlines, and practical tradeoffs.
+tags:
+  - grpc
+  - protocols
+status: growing
+sources:
+  - https://grpc.io/docs/what-is-grpc/core-concepts/
+  - https://grpc.io/docs/guides/deadlines/
+  - https://grpc.io/docs/guides/status-codes/
+---
+
+gRPC lets a client call a service method through generated code backed by a network protocol.
+The method looks like a local function in application code, but it can fail, time out, or complete
+remotely after the caller disconnects. Protobuf is the usual interface definition and message format.
+
+## What happens during a call
+
+```text
+.proto contract → code generators → client stub + message types + server interface
+application → client stub → serialized request → HTTP/2 stream
+            → server handler → response message + gRPC status → client result
+```
+
+A method has a fully qualified identity such as `learning.greet.v1.GreetService/Greet`. The client
+serializes a request, adds call metadata and a deadline, and sends it using gRPC framing. The server
+decodes it, dispatches the handler, and returns messages and final status. A transport HTTP status
+alone does not capture the RPC outcome; gRPC status is carried separately, commonly in trailers.
+Source: [gRPC core concepts](https://grpc.io/docs/what-is-grpc/core-concepts/).
+
+| Call shape                                    | Example                              |
+| --------------------------------------------- | ------------------------------------ |
+| Unary: one request, one response              | Read an order                        |
+| Server streaming: one request, many responses | Watch job progress                   |
+| Client streaming: many requests, one response | Upload a batch                       |
+| Bidirectional streaming                       | Exchange a live sequence of messages |
+
+A stream preserves message order within that stream. It does not provide application-level replay,
+resume offsets, or exactly-once processing automatically. Define those when your workflow needs them.
+Browser support for streaming shapes is narrower; see [React and Go](./react-and-go).
+
+## Why choose it?
+
+Generated contracts reduce handwritten client glue across Go, Java, TypeScript, and other languages.
+It is useful for service-to-service APIs and explicit streaming contracts. Costs include schema/codegen
+maintenance, compatible intermediaries, less convenient manual inspection, and extra browser choices.
+A simple public JSON API may be easier for diverse consumers. Measure your workload before claiming
+that Protobuf or HTTP/2 will make the whole application faster.
+
+## Calls need operational policy
+
+Set realistic deadlines on outbound calls; do not assume a default timeout will protect the service.
+Pass the request context into downstream work so cancellation can stop unnecessary queries. A caller's
+deadline budget includes network and downstream latency. See [deadlines](https://grpc.io/docs/guides/deadlines/).
+
+Treat status codes as part of the contract. `INVALID_ARGUMENT` can identify a rejected input,
+`UNAUTHENTICATED` a missing identity, `PERMISSION_DENIED` an unauthorized operation, and `UNAVAILABLE`
+a potentially transient service problem. Retries still require an idempotency policy: a timed-out
+mutation may already have succeeded. Never retry all failures indefinitely.
+
+Use TLS, resource authorization, request-size/concurrency limits, and bounded retry budgets.
+Interceptors can centralize authentication plumbing, metrics, and tracing, but resource ownership
+checks belong with the operation's business rules. Use standard OpenTelemetry instrumentation and
+propagate context; do not put unbounded user identifiers into metric labels.
+
+Continue with [Protobuf](./protobuf), [Buf and schema distribution](./buf-and-distribution), and the
+[local Go/React lab](/docs/playbooks/development/grpc-go-react).

@@ -1,5 +1,5 @@
 {
   "title": "Development",
   "pagesIndex": "index",
-  "pages": ["index", "new-mac"]
+  "pages": ["index", "new-mac", "nextjs-basics", "observability", "grpc-go-react"]
 }

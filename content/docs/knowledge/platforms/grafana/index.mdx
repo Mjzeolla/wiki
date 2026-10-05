@@ -1,0 +1,66 @@
+---
+title: Grafana
+description: Dashboards, data sources, exploration, and alerting across observability backends.
+tags:
+  - grafana
+  - observability
+status: growing
+sources:
+  - https://grafana.com/docs/grafana/latest/introduction/
+  - https://grafana.com/docs/grafana/latest/alerting/
+---
+
+Grafana is a UI for querying and visualizing data held in other systems. A dashboard combines
+panels, queries, variables, and time ranges. Grafana can manage alert rules too. Start with the
+[Prometheus dashboard walkthrough](/docs/playbooks/development/observability/grafana).
+
+## Where it fits
+
+```text
+worker → /metrics ← Prometheus ← Grafana queries → dashboard
+app → OpenTelemetry → trace backend ← Grafana queries → trace view
+```
+
+| Tool                                                                 | Primary role                                                |
+| -------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Grafana                                                              | Explore, visualize, and alert using configured data sources |
+| [Prometheus](../prometheus)                                          | Scrape and store metrics; execute PromQL                    |
+| [OpenTelemetry](/docs/knowledge/tooling/observability/opentelemetry) | Instrument and transport signals                            |
+| Loki / Tempo / Mimir                                                 | Separate log / trace / scalable metrics backends            |
+| [Consul](../consul)                                                  | Discover services and their health                          |
+
+Installing Grafana alone does not create metrics history. Its application database stores things
+such as dashboards and users, not a replacement copy of every data source's telemetry.
+Grafana OSS and Enterprise are self-managed editions; Grafana Cloud is a broader managed offering.
+Read [About Grafana](https://grafana.com/docs/grafana/latest/introduction/) for these distinctions.
+
+## Concepts to learn first
+
+A **data source** defines a connection and query capabilities. A **panel** queries that source and
+selects a visualization and units. A **dashboard** puts panels into operational context. **Variables**
+let readers select services or environments without cloning dashboards. **Explore** is for ad-hoc
+investigation before deciding a query deserves a permanent panel.
+
+A useful service dashboard usually starts with traffic, errors, duration, and saturation. Choose
+units deliberately: requests/second and total requests are different measurements; duration in
+seconds should not be labeled milliseconds unless converted. Use descriptions for assumptions,
+including sampling, scrape interval, and missing-data behavior.
+
+## Strengths and tradeoffs
+
+Grafana unifies views across backends and makes reusable operational dashboards possible. Costs
+include query load, dashboard maintenance, plugin compatibility, and access-control configuration.
+A beautiful panel is not evidence that the underlying query is correct. Inspect the same query in
+the backend and test failure cases, especially no data and a stopped target.
+
+## Alert ownership
+
+Grafana-managed rules are evaluated by Grafana; data-source-managed rules are evaluated by the
+backend that owns them. Prometheus plus Alertmanager is a separate alerting path. Choose the owner
+per rule to avoid duplicate notifications and conflicting silences. A dashboard threshold only
+changes a visualization; it does not itself configure a notification policy. See
+[Grafana Alerting](https://grafana.com/docs/grafana/latest/alerting/).
+
+Continue with [dashboards and provisioning](./dashboards-and-provisioning), the
+[local walkthrough](/docs/playbooks/development/observability/grafana), and the
+[Prometheus data-source reference](https://grafana.com/docs/grafana/latest/datasources/prometheus/).

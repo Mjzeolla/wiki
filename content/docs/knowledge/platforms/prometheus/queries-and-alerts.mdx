@@ -1,0 +1,92 @@
+---
+title: PromQL and Alerting
+description: Read counters, aggregate latency, and distinguish alert evaluation from notification.
+tags:
+  - prometheus
+  - metrics
+  - alerting
+status: growing
+sources:
+  - https://prometheus.io/docs/prometheus/latest/querying/functions/
+  - https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+  - https://prometheus.io/docs/alerting/latest/alertmanager/
+---
+
+Use these queries after the [local metrics lab](/docs/playbooks/development/observability/prometheus).
+The lab emits completed work and a classic duration histogram every second.
+
+## Queries with meaning
+
+```text
+up{job="learning-worker"}
+```
+
+Expect one when the target is scrapeable and zero when a configured target fails collection.
+A missing target/series is a different case; zero and absence are not interchangeable.
+
+```text
+sum by (outcome) (rate(learning_jobs_total[1m]))
+```
+
+This is jobs per second over a one-minute range, grouped by outcome. Wait for multiple scrapes
+before expecting a rate. Apply `rate` to individual counters before aggregating so resets remain
+visible to the function. A larger range smooths more noise but reacts more slowly.
+
+```text
+histogram_quantile(
+  0.95,
+  sum by (le) (rate(learning_job_duration_seconds_bucket[5m]))
+)
+```
+
+This estimates p95 duration in seconds across the lab's classic histogram series. Preserve `le`
+when aggregating buckets. Accuracy depends on bucket boundaries and sample volume; an empty
+histogram need not produce a meaningful percentile. See [query functions](https://prometheus.io/docs/prometheus/latest/querying/functions/).
+
+## A complete lab alert rule
+
+Save as `alerts.yml` beside the walkthrough's `prometheus.yml`:
+
+```yaml
+groups:
+  - name: learning-worker
+    rules:
+      - alert: LearningWorkerScrapeFailed
+        expr: up{job="learning-worker"} == 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Learning worker metrics cannot be scraped
+          description: Check the worker process and its localhost metrics listener.
+```
+
+Add this top-level setting to `prometheus.yml`, then validate and restart the lab server:
+
+```yaml
+rule_files:
+  - alerts.yml
+```
+
+```bash
+promtool check rules alerts.yml
+promtool check config prometheus.yml
+```
+
+Stop only the lab worker. After scrape failure plus the pending duration and evaluation delay,
+the rule should become firing in the Prometheus alerts view. Restarting the worker resolves it.
+`for` requires the expression to remain active; it helps avoid reacting to one transient scrape.
+This rule does not detect a target removed entirely from discovery; missing-target expectations
+need a separate rule or inventory model.
+
+No notifications are sent by this exercise. Prometheus evaluates the rule; an independently
+configured Alertmanager and receiver route are needed for delivery. See
+[alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) and
+[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/).
+
+## Operational habits
+
+Prefer alerts tied to user impact, an actionable owner, and a recovery guide. Recording rules
+precompute frequently used expressions; they do not replace raw data retention planning. Test
+rules with fixtures using [promtool rule tests](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/)
+when production alert behavior matters. Avoid dashboards that hide missing data as healthy zeroes.

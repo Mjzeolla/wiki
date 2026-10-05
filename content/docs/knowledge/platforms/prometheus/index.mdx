@@ -1,0 +1,82 @@
+---
+title: Prometheus
+description: Metrics collection, time-series storage, PromQL, and alerting responsibilities.
+tags:
+  - observability
+  - metrics
+  - prometheus
+status: growing
+sources:
+  - https://prometheus.io/docs/introduction/overview/
+  - https://prometheus.io/docs/concepts/metric_types/
+  - https://prometheus.io/docs/practices/naming/
+---
+
+Prometheus answers questions such as “How many requests are failing?” and “Is latency increasing?”
+It scrapes numerical measurements from HTTP endpoints, stores time series, and evaluates PromQL.
+It is not a log search engine or a distributed trace store. Start with the
+[local metrics walkthrough](/docs/playbooks/development/observability/prometheus).
+
+## Architecture and vocabulary
+
+```text
+application / exporter → exposes /metrics ← Prometheus scrapes
+                                            ↓
+                                   time-series storage + PromQL
+                                            ↓
+                                rules → Alertmanager → notifications
+```
+
+| Component      | Responsibility                                                  |
+| -------------- | --------------------------------------------------------------- |
+| Client library | Instrument application behavior, such as request counts         |
+| Exporter       | Translate another system's measurements into scrapeable metrics |
+| Target         | Endpoint Prometheus attempts to scrape                          |
+| Job / instance | Group of related targets / an individual target identity        |
+| Prometheus     | Collect, store, query, and evaluate rules                       |
+| Alertmanager   | Group, deduplicate, route, silence, and inhibit alerts          |
+| Dashboard tool | Visualize queries; Grafana is a common separate choice          |
+
+Prometheus can discover targets dynamically or use a static list. A successful scrape produces
+`up = 1`; that proves collection succeeded, not that every business operation is healthy.
+Sources: [overview](https://prometheus.io/docs/introduction/overview/) and
+[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/).
+
+## Choosing measurements
+
+| Type      | Example                                   | How to interpret it                                              |
+| --------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| Counter   | Completed jobs                            | Cumulative value; use a rate or increase across time             |
+| Gauge     | Queue depth                               | Current quantity that can rise or fall                           |
+| Histogram | Request duration distribution             | Bucket/count/sum observations support aggregate latency analysis |
+| Summary   | Client-calculated quantiles and count/sum | Quantiles generally cannot be combined across replicas           |
+
+The [metric types](https://prometheus.io/docs/concepts/metric_types/) and
+[histogram guidance](https://prometheus.io/docs/practices/histograms/) explain the tradeoffs.
+Classic histograms and native histograms have different query shapes; the examples here use
+classic histogram buckets.
+
+Each distinct label combination creates a separate series. A bounded label such as
+`outcome="success"` is useful. User IDs, request IDs, and raw URLs can create an unbounded number
+of series. Use a route template such as `/orders/:id`, not each actual order URL. Name duration
+metrics in seconds and counters with `_total`. See [naming and labels](https://prometheus.io/docs/practices/naming/).
+
+## When it fits and where it costs
+
+Prometheus is a good fit for service/infrastructure trends, numerical alerts, and operational
+queries. It requires deliberate label design, retention sizing, and alert ownership. It does not
+provide a complete audit trail or exact transaction ledger; use the business database for billing
+and authoritative counts. Scrape gaps and process resets matter when interpreting observations.
+
+A standalone server is easy to understand. Longer retention and high availability require an
+explicit design; local storage is not magically a replicated cluster. Consult
+[storage](https://prometheus.io/docs/prometheus/latest/storage/) before choosing retention and remote storage.
+
+## How it relates to the other tools
+
+[OpenTelemetry](/docs/knowledge/tooling/observability/opentelemetry) can supply instrumentation and
+telemetry transport; Prometheus remains a metrics backend. [Consul](../consul) can provide service
+locations for target discovery. Neither is required for a first Prometheus setup.
+
+Continue with [PromQL and alerting](./queries-and-alerts), then the
+[official getting-started guide](https://prometheus.io/docs/prometheus/latest/getting_started/).

@@ -1,0 +1,68 @@
+name: GitHub Pages
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  pages-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate before building Pages
+        run: pnpm run ci
+      - name: Read Pages configuration
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Build and verify static site
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ -n "$PAGES_BASE_URL" ]; then
+            export NEXT_PUBLIC_SITE_URL="$PAGES_BASE_URL"
+            NEXT_PUBLIC_BASE_PATH=$(node -e 'process.stdout.write(new URL(process.env.PAGES_BASE_URL).pathname.replace(/\/$/, ""))')
+            export NEXT_PUBLIC_BASE_PATH
+          fi
+          pnpm build:pages
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: out
+
+  deploy-pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: pages-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

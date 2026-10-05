@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup dev build check ci validate format format-check lint links markdown markdown-fix test typecheck hooks
+.PHONY: help setup run dev build check ci validate format format-check lint links markdown markdown-fix test typecheck hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -9,8 +9,10 @@ setup: ## Install the pinned toolchain, dependencies, and Git hooks
 	mise install
 	mise exec -- pnpm install --frozen-lockfile
 
-dev: ## Start the local development server
-	mise exec -- pnpm dev
+run: ## Start the local development server through Mise
+	mise run dev
+
+dev: run ## Alias for make run
 
 build: ## Build the production site
 	mise exec -- pnpm build

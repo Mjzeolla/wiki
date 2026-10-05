@@ -1,0 +1,75 @@
+---
+title: Collector Pipelines
+description: Receivers, processors, exporters, and deployment choices for telemetry transport.
+tags:
+  - observability
+  - opentelemetry
+  - collector
+status: growing
+sources:
+  - https://opentelemetry.io/docs/collector/configuration/
+  - https://opentelemetry.io/docs/collector/deployment/
+  - https://opentelemetry.io/docs/collector/resiliency/
+---
+
+The Collector centralizes telemetry routing and processing. An application can export directly to
+a backend, but a Collector is useful when several services need consistent batching, filtering,
+credentials, or destinations. It is not durable query storage.
+
+## Pipeline model
+
+```text
+receiver → processors in configured order → exporter(s)
+```
+
+A component declaration does nothing until a service pipeline references it. Traces, metrics,
+and logs have separate pipelines. Distribution contents differ: confirm that the selected binary
+contains every receiver/processor/exporter you configure. See [configuration](https://opentelemetry.io/docs/collector/configuration/).
+
+The [trace lab](/docs/playbooks/development/observability/opentelemetry) uses this complete config:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+processors:
+  batch: {}
+exporters:
+  debug:
+    verbosity: detailed
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+```
+
+It accepts OTLP over HTTP and prints spans. Port 4318 is the conventional HTTP endpoint;
+OTLP/gRPC conventionally uses 4317. A reachable port is not enough: protocol and signal path must
+match. The lab exporter uses `/v1/traces` explicitly.
+
+`debug` is for inspection, not production retention. Detailed output can contain every attribute.
+The loopback receiver is suitable for native processes on one machine. Inside a container,
+loopback refers to that container; change networking deliberately rather than copying localhost
+addresses between deployment modes.
+
+## Agent or gateway
+
+| Pattern                 | Useful property                            | Cost                                                   |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------ |
+| Near each workload/host | Local collection and host-specific context | More instances and configurations                      |
+| Shared gateway          | Centralized policy and backend export      | Network dependency, capacity and availability planning |
+| Both                    | Local collection plus shared processing    | More hops and operational complexity                   |
+
+Choose based on failure domains and traffic. Export queues and retries help with transient
+failures but are bounded; telemetry can still be lost. Consider memory limits, backpressure,
+self-monitoring, authentication/TLS, and persistent queues where supported. Consult
+[deployment patterns](https://opentelemetry.io/docs/collector/deployment/) and
+[resiliency](https://opentelemetry.io/docs/collector/resiliency/).
+
+For production, replace the debug exporter with an authenticated backend exporter and add only
+processors whose effects you understand. Confirm the backend receives the expected service name,
+trace IDs, and attributes; an SDK reporting successful export only proves the first hop accepted data.

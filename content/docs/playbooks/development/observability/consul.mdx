@@ -1,0 +1,123 @@
+---
+title: Consul Local Discovery Lab
+description: Register a local HTTP service, query passing instances, and observe health failure.
+tags:
+  - consul
+  - python
+  - playbooks
+status: growing
+sources:
+  - https://developer.hashicorp.com/consul/install
+  - https://developer.hashicorp.com/consul/commands/agent
+  - https://developer.hashicorp.com/consul/api-docs/agent/service
+  - https://developer.hashicorp.com/consul/api-docs/health
+---
+
+## Prerequisites
+
+Install the native `consul` binary from the [official install page](https://developer.hashicorp.com/consul/install).
+Use Python 3.10 or newer and curl. Use an empty `consul-lab` directory and no existing Consul agent
+on the default local ports. Run `consul version` to record the version. The agent uses additional
+internal ports as well as HTTP 8500; do not run this beside another default-port Consul agent.
+
+This exercise uses a localhost development agent with ephemeral state and no production access
+controls. Do not expose its HTTP listener or use the development configuration for a real cluster.
+See the [agent command reference](https://developer.hashicorp.com/consul/commands/agent).
+
+## 1. Start the development agent
+
+```bash
+consul agent -dev -node=learning-consul -client=127.0.0.1 -bind=127.0.0.1
+```
+
+Leave it running. The HTTP API is at `http://127.0.0.1:8500`. In a second terminal, save this as
+`service.py` in the lab directory:
+
+```python
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path != "/health":
+            self.send_error(404)
+            return
+        body = b"ok\n"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+if __name__ == "__main__":
+    HTTPServer(("127.0.0.1", 8088), Handler).serve_forever()
+```
+
+Run `python3 service.py`. This tiny server is only a health-check target for learning.
+
+## 2. Register the service
+
+In a third terminal, save `service.json` in the lab directory:
+
+```json
+{
+  "ID": "learning-api-1",
+  "Name": "learning-api",
+  "Address": "127.0.0.1",
+  "Port": 8088,
+  "Check": {
+    "HTTP": "http://127.0.0.1:8088/health",
+    "Interval": "5s",
+    "Timeout": "1s"
+  }
+}
+```
+
+Register using the local agent API:
+
+```bash
+curl --fail --request PUT --header 'Content-Type: application/json' --data-binary @service.json http://127.0.0.1:8500/v1/agent/service/register
+```
+
+The command can succeed with an empty response body. Wait for a health-check interval, then query:
+
+```bash
+curl --fail 'http://127.0.0.1:8500/v1/health/service/learning-api?passing=true'
+```
+
+Expect a nonempty array containing service ID `learning-api-1`, address `127.0.0.1`, port `8088`,
+and passing checks. The service address is only valid for this same-machine lab. References:
+[registration API](https://developer.hashicorp.com/consul/api-docs/agent/service) and
+[health API](https://developer.hashicorp.com/consul/api-docs/health).
+
+## 3. Observe failure and recovery
+
+Stop only `service.py` with Ctrl+C. After the check interval and timeout, repeat the passing query;
+expect `[]`. Query without the filter to see the registered instance and failing check:
+
+```bash
+curl --fail http://127.0.0.1:8500/v1/health/service/learning-api
+```
+
+Restart `python3 service.py`. After a successful check, the passing query should include it again.
+This demonstrates health filtering, not load balancing or proxying. Read
+[health and discovery](/docs/knowledge/platforms/consul/health-and-discovery) for the distinction.
+
+## Cleanup and troubleshooting
+
+Deregister only this lab service while the agent is still running:
+
+```bash
+curl --fail --request PUT http://127.0.0.1:8500/v1/agent/service/deregister/learning-api-1
+```
+
+Stop the service and agent with Ctrl+C. Development state is not a persistent cluster.
+
+| Symptom                                          | Check                                                     |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| Agent cannot start                               | Another Consul process may own one of its default ports   |
+| Registration succeeds but passing query is empty | Inspect unfiltered checks and curl the service health URL |
+| Connection refused on 8500                       | Development agent is still running and bound locally      |
+| Check never recovers                             | Service restarted on 8088 and responds 200 at `/health`   |
+
+Continue with the [Consul overview](/docs/knowledge/platforms/consul) and
+[official tutorials](https://developer.hashicorp.com/consul/tutorials).

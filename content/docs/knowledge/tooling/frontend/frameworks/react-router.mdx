@@ -1,0 +1,39 @@
+---
+title: React Router
+description: Choose declarative, data, or framework mode explicitly.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://reactrouter.com/start/modes
+---
+
+React Router can be a routing library or a fuller application framework. Declarative mode provides
+routing primitives. Data mode adds route data APIs. Framework mode adds conventions and build
+integration around those capabilities. Saying “we use React Router” is not enough to describe the
+application's server, build, and data architecture.
+
+A client-only declarative example with `react-router` installed:
+
+```tsx
+import { BrowserRouter, Routes, Route } from 'react-router';
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<h1>Home</h1>} />
+        <Route path="/about" element={<h1>About</h1>} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+This snippet does not create SSR or a backend. A static host needs valid deep routes to load the
+app entry point. If adopting framework mode, use its loader/action and deployment conventions
+rather than layering unrelated routing systems. It is useful when routing and data transitions
+are central and the team wants a choice of integration levels.
+
+Official source: [React Router documentation](https://reactrouter.com/start/modes).

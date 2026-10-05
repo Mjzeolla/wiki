@@ -1,0 +1,76 @@
+---
+title: SPA and Server Rendering
+description: Understand CSR, SSR, static generation, hydration, and how navigation differs from rendering.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://nextjs.org/docs/app/guides/single-page-applications
+  - https://nextjs.org/docs/app/getting-started/server-and-client-components
+  - https://vite.dev/guide/ssr.html
+---
+
+**SPA describes navigation; CSR and SSR describe rendering.** A single-page application updates
+views without a full document reload for each navigation. Its first view can still arrive as
+server-rendered HTML. Next.js supports this combination; see its
+[SPA guide](https://nextjs.org/docs/app/guides/single-page-applications).
+
+## The terms
+
+| Term                                 | What happens                                                                 | Practical tradeoff                                                                   |
+| ------------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| SPA: single-page application         | Client routing changes the view within the loaded application                | Smooth transitions, but route loading, history, and error states need handling       |
+| CSR: client-side rendering           | Browser JavaScript constructs the view                                       | Simple static frontend hosting; meaningful content may wait for JavaScript and data  |
+| SSR: server-side rendering           | A server produces HTML at request time                                       | Can include current or personalized content; adds server work and runtime operations |
+| SSG: static generation               | HTML is generated ahead of requests, commonly during a build                 | Easy to cache; source changes need a rebuild or regeneration strategy                |
+| ISR: incremental static regeneration | Previously generated content is refreshed without rebuilding the entire site | Reduces rebuild work; freshness and invalidation become explicit concerns            |
+| Hydration                            | React connects behavior to existing HTML                                     | Enables interaction; initial browser output must agree with server output            |
+| Streaming                            | The response delivers ready UI before slower parts finish                    | Improves progressive display; loading boundaries need thoughtful placement           |
+
+SSR and SSG can both hydrate interactive components. Static hosting does not imply CSR: it can
+serve complete pregenerated HTML too. React Server Components are another dimension: they control
+where component code executes and what crosses the server/client boundary, not simply when HTML
+is generated. Read the [Next.js component guide](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+and [ISR guide](https://nextjs.org/docs/app/guides/incremental-static-regeneration).
+
+## Example request flows
+
+```text
+Typical client-rendered SPA:
+request → HTML shell + JavaScript → browser runs app → API data → populated view
+
+Request-time server rendering:
+request → server reads data → HTML → browser displays → hydration enables interaction
+
+Static generation:
+build reads content → HTML files → request served from CDN → optional hydration
+```
+
+These are simplified flows: requests may run in parallel, cached data may already exist, and
+streaming can deliver partial output before all data resolves.
+
+## Choosing a model
+
+| Situation                               | Useful starting point                                      | Check before committing                                 |
+| --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| Public documentation or marketing pages | Static generation with interactive islands/components      | Rebuild time, metadata, content update frequency        |
+| Personalized account page               | Request-time server rendering or authenticated client data | Authorization, private caching, loading states          |
+| Browser-heavy editor behind login       | Client app with an API                                     | JavaScript size, offline requirements, session handling |
+| Product catalog                         | Static/cached content with a deliberate freshness policy   | Price and stock freshness, invalidation after writes    |
+
+These are starting points, not framework requirements. Measure actual loading and interaction
+performance. Server-rendered content can help crawlers and previews, but neither SSR nor Next.js
+guarantees search ranking.
+
+## Hosting and routing consequences
+
+A statically hosted SPA with history-based routes needs its host to serve the entry HTML for
+valid application routes on direct visits. Keep API and asset paths out of that fallback so
+missing resources do not silently return HTML. A separate backend still owns authorization and
+persistent data.
+
+[Next.js](./nextjs) integrates rendering and navigation; its [static export](https://nextjs.org/docs/app/guides/static-exports)
+has fewer server capabilities than a Node deployment. [Vite](../build-tools/vite) can build a client app,
+and also supplies [SSR integration APIs](https://vite.dev/guide/ssr.html); it is not inherently
+restricted to CSR or SPAs.

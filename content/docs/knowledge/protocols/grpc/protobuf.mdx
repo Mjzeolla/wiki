@@ -1,0 +1,82 @@
+---
+title: Protobuf Contracts
+description: Messages, services, field presence, and compatible schema changes.
+tags:
+  - grpc
+  - protobuf
+status: growing
+sources:
+  - https://protobuf.dev/programming-guides/proto3/
+  - https://protobuf.dev/best-practices/dos-donts/
+---
+
+A `.proto` file is source code for an interface contract. A compiler and plugins turn it into
+language-specific message types and service bindings. Protobuf itself can be used without gRPC;
+a schema does not imply a particular deployment or browser transport.
+
+## A small contract
+
+Store this as `proto/learning/greet/v1/greet.proto` in the [lab](/docs/playbooks/development/grpc-go-react):
+
+```protobuf
+syntax = "proto3";
+
+package learning.greet.v1;
+
+option go_package = "example.com/rpc-lab/gen/learning/greet/v1;greetv1";
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string greeting = 1;
+}
+
+service GreetService {
+  rpc Greet(GreetRequest) returns (GreetResponse);
+}
+```
+
+The package provides the Protobuf namespace; `go_package` identifies a Go import path and optional
+Go package name. Neither publishes a package by itself. Field numbers are wire identities, so
+changing `name = 1` to `name = 2` is not a harmless refactor. See the
+[proto3 guide](https://protobuf.dev/programming-guides/proto3/).
+
+## Presence and defaults
+
+A plain proto3 scalar such as `string name` reads as an empty string if absent. Use `optional`
+when distinguishing absent from explicitly supplied default values matters. A partial update often
+needs both explicit presence and a field mask so “leave unchanged” differs from “clear this value.”
+
+Enums should start with a zero value such as `ORDER_STATE_UNSPECIFIED`, and consumers should tolerate
+unrecognized future values. Use `oneof` for mutually exclusive alternatives, but evolve it carefully.
+Do not assume generated TypeScript types validate all business rules: this greeting still needs a
+server-side nonempty-name check. Schema annotations only enforce validation when matching runtime
+validation is actually installed.
+
+## Evolve without breaking independent consumers
+
+| Change                        | Practice                                                               |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| Add a field                   | Pick a new number; make old-client behavior meaningful                 |
+| Remove a field                | Reserve its number and name; never reuse its identity                  |
+| Rename a field                | Consider source-code and JSON consumers, not only binary compatibility |
+| Change a type                 | Treat as a compatibility review, not an automatic conversion           |
+| Introduce a new major service | Run versions side by side during migration                             |
+
+For example, after removing a former field from a message:
+
+```protobuf
+message Account {
+  reserved 2;
+  reserved "legacy_alias";
+  string id = 1;
+}
+```
+
+A schema can be wire-compatible but behaviorally incompatible: accepting fewer values or changing
+the meaning of an existing field can break callers without changing the bytes. Roll out additive
+server support, migrate clients, observe usage, then retire old behavior. Use
+[Protobuf best practices](https://protobuf.dev/best-practices/dos-donts/) and
+[Buf compatibility checks](./buf-and-distribution) together with integration tests.

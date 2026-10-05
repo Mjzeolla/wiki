@@ -1,0 +1,137 @@
+---
+title: Next.js
+description: How Next.js extends React, its useful features, rendering model, and practical tradeoffs.
+tags:
+  - frontend
+  - react
+  - nextjs
+  - frameworks
+status: growing
+sources:
+  - https://nextjs.org/docs
+  - https://react.dev/learn/creating-a-react-app
+  - https://nextjs.org/docs/app/getting-started/server-and-client-components
+  - https://nextjs.org/docs/app/getting-started/layouts-and-pages
+  - https://nextjs.org/docs/app/getting-started/deploying
+---
+
+Next.js is a React application framework. You still write React components, props, hooks, and
+JSX; Next.js adds an integrated way to route requests, render pages, run server code, and build
+and deploy the application. Start with the [basic walkthrough](/docs/playbooks/development/nextjs-basics)
+to build two pages, an interactive counter, and a JSON endpoint.
+
+This guide uses the **App Router** (`app/`), reviewed against the official documentation on
+2026-09-29. Older tutorials may use the **Pages Router** (`pages/`), `getServerSideProps`, or
+`getStaticProps`. Those APIs belong to a different routing model; do not paste them into App Router
+pages. See the [official documentation](https://nextjs.org/docs) and its router/version selector.
+
+## Next.js versus React
+
+React and Next.js are different layers of the same application. React supplies the component
+model; Next.js supplies framework conventions around it. React can support server rendering through
+frameworks and other integrations, so “React is client-only” is not an accurate distinction.
+[React's application guide](https://react.dev/learn/creating-a-react-app) explains these choices.
+
+| Concern               | React with a typical Vite client app                                | Next.js App Router                                                       |
+| --------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| UI                    | React components, JSX, props, hooks                                 | The same React foundations                                               |
+| Routing               | Add a router and choose route organization                          | File-based pages and nested layouts                                      |
+| Initial rendering     | Commonly browser rendering; other modes need additional integration | Integrated server rendering and prerendering                             |
+| Server code           | Usually a separate API/service                                      | Server Components, Route Handlers, and Server Functions alongside the UI |
+| Data                  | Choose client fetching and cache ownership                          | Server reads plus client data tools where needed                         |
+| Deployment            | Static assets plus any separate backend                             | Node.js, containers, supported platforms, or a limited static export     |
+| Architectural freedom | More assembly and explicit choices                                  | More conventions and framework-specific behavior                         |
+
+Vite is build tooling, not a replacement for React. This comparison assumes a conventional
+client-rendered Vite setup, not every framework that uses Vite. See [React application stack](../../application-stack)
+for the surrounding package choices.
+
+## Server and Client Components
+
+App Router pages and layouts are Server Components by default. Use them to compose the initial
+view and read server-side data. Keep browser interactions in small Client Components marked with
+`"use client"`, such as the counter in the walkthrough.
+
+- **Server Component:** can read server resources; cannot use browser event handlers or `useState`.
+- **Client Component:** supports state, effects, and event handlers; its code participates in the
+  browser bundle.
+- **Boundary:** props passed to a Client Component must be serializable by React. Never pass secrets.
+
+`"use client"` does not mean “never rendered on the server.” Client Components can be prerendered
+for the initial HTML and then hydrated in the browser. Access browser-only APIs in appropriate
+client lifecycle code rather than assuming `window` exists during render. Server Component also
+does not mean “runs on every request”: rendering may happen ahead of time.
+
+Source: [Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components).
+
+## Useful features
+
+| Feature                              | Practical use                                                                 | Official guide                                                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| File-based routes and nested layouts | Share navigation around related pages                                         | [Layouts and pages](https://nextjs.org/docs/app/getting-started/layouts-and-pages)                                                       |
+| `Link` and navigation                | Move between pages with framework navigation and prefetching                  | [Linking and navigating](https://nextjs.org/docs/app/getting-started/linking-and-navigating)                                             |
+| Server-side data reads               | Read data close to the backend without a browser fetch for every initial view | [Fetching data](https://nextjs.org/docs/app/getting-started/fetching-data)                                                               |
+| Loading UI and streaming             | Show a useful shell while slower content becomes ready                        | [Loading UI](https://nextjs.org/docs/app/api-reference/file-conventions/loading)                                                         |
+| Error boundaries and not-found UI    | Give route failures and missing resources intentional UI                      | [Error handling](https://nextjs.org/docs/app/getting-started/error-handling)                                                             |
+| Route Handlers                       | Implement HTTP endpoints such as `/api/status`                                | [Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)                                                             |
+| Server Functions and Actions         | Handle mutations and form submissions on the server                           | [Mutating data](https://nextjs.org/docs/app/getting-started/mutating-data)                                                               |
+| Metadata                             | Define titles, descriptions, and social previews near the page                | [Metadata](https://nextjs.org/docs/app/getting-started/metadata-and-og-images)                                                           |
+| Image and font tooling               | Manage images and fonts using framework conventions                           | [Image](https://nextjs.org/docs/app/api-reference/components/image), [Font](https://nextjs.org/docs/app/api-reference/components/font)   |
+| Caching and revalidation             | Reuse results and refresh them according to application requirements          | [Caching](https://nextjs.org/docs/app/getting-started/caching), [Revalidation](https://nextjs.org/docs/app/getting-started/revalidating) |
+
+Caching is version- and configuration-sensitive. Identify whether the app uses Cache Components
+before adopting examples involving `"use cache"`, cache lifetimes, or older route/fetch options.
+Choose freshness intentionally and test after mutations; do not assume every fetch is cached or
+that every render always reads fresh data.
+
+A Server Action is still a server entry point: validate its arguments, authenticate the caller,
+and authorize the operation. A button being hidden is not authorization. The
+[mutation guide](https://nextjs.org/docs/app/getting-started/mutating-data) covers these responsibilities.
+
+## Pros and cons
+
+These are practical selection tradeoffs, not guarantees that every Next.js application will be faster.
+
+| Strength                                                               | Cost or limitation                                                                       |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Routing, rendering, and server integration work within one framework   | More conventions and a larger learning surface                                           |
+| Server-rendered content and metadata suit content-heavy public pages   | Search visibility still depends on content, accessibility, and correct implementation    |
+| Server Components can reduce browser JavaScript                        | Large client boundaries can erase the benefit                                            |
+| UI and request handlers can share a repository and server-side helpers | Runtime and deployment constraints still matter for jobs, sockets, and backend workloads |
+| Built-in rendering and caching tools can reduce repeated work          | Incorrect invalidation can show stale data; caching requires deliberate ownership        |
+| Multiple deployment options                                            | Features must match the selected host and rendering mode                                 |
+
+**Consider Next.js** for public content sites, storefronts, documentation, and applications that
+benefit from integrated server rendering and UI-specific server code. **Consider a simpler client
+app** when a browser-heavy internal tool already has a separate backend and does not benefit much
+from server rendering. A dedicated API or worker can still coexist with Next.js.
+
+Vercel is optional: Next.js supports a Node.js server and Docker deployment. A static export can
+be served as files, but request-time server features and Server Actions are unavailable in that
+mode. Check [deployment options](https://nextjs.org/docs/app/getting-started/deploying) and
+[static-export limitations](https://nextjs.org/docs/app/guides/static-exports) before choosing a host.
+
+## How the other packages fit
+
+- [TypeScript](../../types-and-validation/typescript): checks your source code; Next.js does not replace it.
+- [Zod](../../types-and-validation/zod): validates incoming data in handlers and mutations.
+- [Tailwind](../../styling/tailwind-css): supplies styling utilities; it is optional.
+- [clsx and CVA](../../styling/class-composition): compose conditional classes and component variants.
+- [State and data tools](../../state-and-data): useful for browser cache and interaction lifecycles that
+  server rendering alone does not solve.
+- [Husky](/docs/knowledge/tooling/repository/hooks/husky): local Git checks, independent of the framework.
+
+## Continue learning
+
+Follow the [local walkthrough](/docs/playbooks/development/nextjs-basics), then use the
+[official Next.js Learn course](https://nextjs.org/learn) for a larger application. Consult the
+[App Router documentation](https://nextjs.org/docs/app) for framework APIs and
+[React Learn](https://react.dev/learn) for component and hook fundamentals.
+
+## Next.js guides
+
+- [Routing and layouts](./routing-and-layouts): file conventions, dynamic routes, and navigation.
+- [Data and mutations](./data-and-mutations): server reads, client data, validation, and cache ownership.
+- [Client and server caching](./caching): cache owners, lifetimes, paired code, and mutation invalidation.
+- [Deployment and configuration](./deployment): hosting modes, environment variables, and verification.
+- [SPA and server rendering](../rendering-models): separate navigation, rendering, and hosting choices.

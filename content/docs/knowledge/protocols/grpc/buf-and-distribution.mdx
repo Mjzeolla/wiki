@@ -1,0 +1,94 @@
+---
+title: Buf and Contract Distribution
+description: Lint, generate, version, store, and ship Protobuf contracts independently of service binaries.
+tags:
+  - grpc
+  - buf
+status: growing
+sources:
+  - https://buf.build/docs/configuration/v2/buf-yaml/
+  - https://buf.build/docs/configuration/v2/buf-gen-yaml/
+  - https://buf.build/docs/breaking/
+  - https://buf.build/docs/bsr/generated-sdks/
+---
+
+Buf provides a workflow around Protobuf: lint schemas, check compatibility, resolve dependencies,
+and invoke code generators. The Buf Schema Registry (BSR) can host modules and generate SDKs. Buf is
+not the server runtime and does not replace the need to deploy the service.
+
+## Choose a canonical owner
+
+| Layout                         | Useful when                                               | Cost to manage                                                                     |
+| ------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Service repo owns `proto/`     | One service/team owns an API                              | Consumers need a release channel independent of private implementation             |
+| Dedicated contracts repo       | Many teams share governance or release contracts together | Ownership/release coordination can become a bottleneck                             |
+| Monorepo `packages/contracts/` | Consumers develop together                                | Deployed versions still diverge; atomic source changes do not make rollouts atomic |
+
+A practical small-project default is `proto/` in the service repo, with generated clients published
+as separate packages when multiple repos consume them. Do not copy proto files manually into each
+frontend. Use a documented versioned source or package dependency.
+
+```text
+service-repo/
+  proto/learning/greet/v1/greet.proto   canonical schema
+  buf.yaml                            module, lint, compatibility rules
+  buf.gen.yaml                        generation recipe
+  buf.lock                            resolved schema dependencies, when present
+  gen/                                generated Go contracts
+  cmd/server/                         private implementation
+  web/src/gen/                        generated browser contracts
+```
+
+## Minimal local configuration
+
+`buf.yaml` for this layout:
+
+```yaml
+version: v2
+modules:
+  - path: proto
+lint:
+  use: [STANDARD]
+breaking:
+  use: [FILE]
+```
+
+`STANDARD` applies convention checks; `FILE` checks a conservative file-level compatibility surface.
+A separate generation recipe selects plugins and output directories. The
+[lab](/docs/playbooks/development/grpc-go-react) includes a complete local-plugin recipe.
+Source: [v2 module configuration](https://buf.build/docs/configuration/v2/buf-yaml/) and
+[generation configuration](https://buf.build/docs/configuration/v2/buf-gen-yaml/).
+
+Run `buf lint`, `buf build`, and `buf generate` in development. In CI, additionally run
+`buf breaking --against <baseline>` using Buf's documented input syntax and the last supported
+released schema (a Git ref, schema image, or BSR reference). Comparing only against the current PR's
+own schema proves nothing. Ensure the baseline is available in shallow CI checkouts and that the
+comparison includes all intended modules. See [breaking detection](https://buf.build/docs/breaking/).
+
+## What to ship
+
+**Schema distribution** gives consumers `.proto` definitions, import paths, and dependencies.
+Publish a BSR module or a versioned source archive/repository release. Consumers can generate their
+own supported languages. An immutable commit/digest is reproducible; a moving branch or label alone
+is not a lock. See the [BSR](https://buf.build/docs/bsr/).
+
+**SDK distribution** gives consumers generated language code through a Go module, npm package, or
+other ecosystem package. The BSR offers [generated SDKs](https://buf.build/docs/bsr/generated-sdks/);
+you can also publish your own. Consumers install the SDK version rather than import the server's
+internal business packages. Include required runtime dependencies and supported toolchain versions.
+
+These are separate releases: schema version, generated SDK version, and deployed service version.
+A `v1` Protobuf package is a compatibility namespace, not a substitute for package release versions.
+Record which schema and generator versions produced each SDK.
+
+## Reproducible generation
+
+Pin the Buf CLI and every plugin version. For local plugins, lock their tool/package dependencies;
+for remote plugins, select explicit versions and revisions when supported. `buf.lock` locks schema
+dependencies, not arbitrary local executables. Update it deliberately when adding/changing BSR imports.
+
+Choose one generated-code policy per package: either commit generated outputs and verify they match
+regeneration, or generate deterministically in CI before packaging/building. Never hand-edit generated
+files. If committing output, check for newly generated untracked files as well as tracked diffs.
+Keep private schemas and credentials in appropriately controlled registries; publishing an SDK can
+also publish API names, comments, and schema details.

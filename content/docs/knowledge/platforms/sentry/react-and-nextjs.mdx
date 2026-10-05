@@ -1,0 +1,216 @@
+---
+title: Sentry in React and Next.js
+description: Choose SDK boundaries, capture handled errors, and instrument browser and server runtimes.
+tags:
+  - sentry
+  - observability
+status: growing
+sources:
+  - https://docs.sentry.io/platforms/javascript/guides/react/
+  - https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+  - https://docs.sentry.io/platforms/javascript/guides/react/usage/
+  - https://docs.sentry.io/platforms/javascript/guides/react/tracing/distributed-tracing/
+---
+
+These examples target **Sentry JavaScript SDK 11.1**, React 19, and Next.js 16 App Router, reviewed
+2026-09-30. SDK initialization and privacy defaults change between majors. Use the official versioned
+[React](https://docs.sentry.io/platforms/javascript/guides/react/) and
+[Next.js setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) guides when upgrading.
+
+| App                       | SDK                                               | Initialization owner                           |
+| ------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| React SPA built with Vite | `@sentry/react`                                   | Browser entry point before app code            |
+| Next.js App Router        | `@sentry/nextjs`                                  | Next.js browser, Node, and optional Edge hooks |
+| Separate Go API           | Go SDK/integration matching the HTTP or RPC stack | Go service lifecycle, not the React bundle     |
+
+Use the framework SDK in Next.js rather than initializing another independent React SDK alongside
+it. A browser SDK cannot capture an exception that exists only in a separate Go process. Each runtime
+needs its own instrumentation and a deliberate propagation path.
+
+## Capture an unexpected handled failure
+
+This React component can also be used as a Next.js Client Component by changing the SDK import to
+`@sentry/nextjs` and adding `'use client'`. The API URL is an application integration seam: the example
+assumes a real `/api/report` endpoint and an application-specific error contract.
+
+```tsx
+import { useState } from 'react';
+import * as Sentry from '@sentry/react';
+
+export function LoadReport() {
+  const [message, setMessage] = useState('');
+
+  async function load() {
+    try {
+      const response = await fetch('/api/report');
+      if (!response.ok) throw new Error('Report request failed');
+      setMessage('Report is ready');
+    } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('feature', 'reports');
+        scope.setContext('operation', { name: 'load-report' });
+        Sentry.captureException(error);
+      });
+      setMessage('The report could not be loaded. Please try again.');
+    }
+  }
+
+  return (
+    <>
+      <button onClick={load}>Load report</button>
+      <p role="status">{message}</p>
+    </>
+  );
+}
+```
+
+Because the catch block handles the error, explicitly capturing it records the failure while keeping
+useful UI feedback. Avoid attaching response bodies, authorization headers, or arbitrary form input.
+In a real endpoint, distinguish expected rejection, cancellation, and unexpected failures before
+reporting. Do not manually capture and rethrow at every layer of the same operation.
+
+React render error hooks/boundaries are a separate path from event-handler promises. The
+[lab](/docs/playbooks/development/observability/sentry) wires React 19's root error hooks; a fallback
+boundary still controls the user's recovery UI. Sources:
+[capturing errors](https://docs.sentry.io/platforms/javascript/guides/react/usage/)
+and [React error capture](https://docs.sentry.io/platforms/javascript/guides/react/).
+
+## Next.js initialization map
+
+Install `@sentry/nextjs@11.1.0` in the application. For a `src/app` project, keep the following runtime
+files in `src/`; without `src/`, keep them at the project root. This is a manual error-capture baseline,
+not a change to this wiki's running application.
+
+Create `sentry-options.ts` for the shared non-secret policy:
+
+```ts
+import type { BrowserOptions } from '@sentry/nextjs';
+
+export const sentryOptions = {
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
+  environment: 'learning',
+  tracesSampleRate: 0,
+  beforeSendLog: () => null,
+  beforeSendMetric: () => null,
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: false,
+    httpBodies: [],
+    urlQueryParams: false,
+  },
+} satisfies BrowserOptions;
+```
+
+These SDK 11 data controls reduce selected automatic collection. They do not sanitize every error
+message or custom context. See [data controls](./releases-and-data) before enabling real-user telemetry.
+Use a deployment-specific environment value instead of `learning` in an application.
+
+Initialize the browser in `instrumentation-client.ts`:
+
+```ts
+import * as Sentry from '@sentry/nextjs';
+import { sentryOptions } from './sentry-options';
+
+Sentry.init(sentryOptions);
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+```
+
+Create `sentry.server.config.ts` and `sentry.edge.config.ts`, each with this content:
+
+```ts
+import * as Sentry from '@sentry/nextjs';
+import { sentryOptions } from './sentry-options';
+
+Sentry.init(sentryOptions);
+```
+
+Register the runtime-specific configuration in `instrumentation.ts`:
+
+```ts
+import * as Sentry from '@sentry/nextjs';
+
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') await import('./sentry.server.config');
+  if (process.env.NEXT_RUNTIME === 'edge') await import('./sentry.edge.config');
+}
+
+export const onRequestError = Sentry.captureRequestError;
+```
+
+Add the framework wrapper to `next.config.ts`, preserving existing configuration and wrappers:
+
+```ts
+import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs/config';
+
+const config: NextConfig = {};
+export default withSentryConfig(config, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+});
+```
+
+The auth token is a build/CI secret for source-map uploads; it is not required in browser code for
+runtime event capture. Configure source maps as described in [releases and data](./releases-and-data).
+Do not add a `NEXT_PUBLIC_` prefix to the auth token.
+
+Add `app/global-error.tsx` (under `src/` when used):
+
+```tsx
+'use client';
+
+import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
+
+export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+  return (
+    <html lang="en">
+      <body>
+        <h1>This page could not load.</h1>
+      </body>
+    </html>
+  );
+}
+```
+
+Next.js controls React root creation, so do not paste the SPA's `createRoot` call into it. Follow the
+[manual setup guide](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) for Server
+Actions, Pages Router, and framework-specific tracing details. Review what action wrappers attach;
+including entire form payloads or responses is not necessary for every failure investigation.
+
+## Tracing without indiscriminate collection
+
+For a browser React app, add `Sentry.browserTracingIntegration()` and set an explicit
+`tracesSampleRate` in the existing `Sentry.init` call. For a router integration, use the adapter
+matching that router version. A sample rate of `1` is useful for a small controlled test, not an
+automatic production choice. Error sampling and trace sampling are separate controls.
+
+Use a bounded name when adding a custom span:
+
+```ts
+await Sentry.startSpan({ name: 'load-report', op: 'ui.action' }, async () => {
+  const response = await fetch('/api/report');
+  if (!response.ok) throw new Error('Report request failed');
+  return response.json();
+});
+```
+
+This fragment assumes `Sentry` is imported and tracing is enabled; its caller still owns error handling.
+Span instrumentation is not a replacement for `captureException` on a handled failure. Propagate
+tracing only to intended API origins, configure the corresponding CORS headers when cross-origin,
+and instrument the backend. Source:
+[distributed tracing](https://docs.sentry.io/platforms/javascript/guides/react/tracing/distributed-tracing/).
+
+## Static exports
+
+A React bundle hosted on GitHub Pages can send browser events directly to Sentry. GitHub Pages does
+not execute Next.js Node/Edge handlers, so server instrumentation and a Next.js telemetry tunnel have
+no request-time server there. A separately hosted API needs its own SDK setup. Source-map upload can
+still run in CI, independently of where static assets are hosted.

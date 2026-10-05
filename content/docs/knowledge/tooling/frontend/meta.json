@@ -3,6 +3,8 @@
   "pages": [
     "index",
     "application-stack",
+    "frameworks",
+    "build-tools",
     "state-and-data",
     "types-and-validation",
     "styling",

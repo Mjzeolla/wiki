@@ -1,0 +1,184 @@
+---
+title: Sentry React Capture Lab
+description: Capture synthetic React errors locally, then optionally verify delivery to a learning Sentry project.
+tags:
+  - sentry
+  - observability
+status: growing
+sources:
+  - https://docs.sentry.io/platforms/javascript/guides/react/
+  - https://docs.sentry.io/platforms/javascript/guides/react/configuration/transports/
+  - https://vite.dev/guide/
+---
+
+Use this lab to see what the SDK captures before connecting a real project. The default configuration
+uses an in-browser transport that logs envelopes and **does not send them to Sentry**. The optional
+project step replaces that transport with normal delivery. Read the
+[Sentry overview](/docs/knowledge/platforms/sentry) for terminology.
+
+## Prerequisites
+
+Use a disposable Vite React/TypeScript application with React 19, Node 22.14+, and npm. Create one
+with the [Vite starter](https://vite.dev/guide/#scaffolding-your-first-vite-project), or reuse a small
+learning app. The example SDK version is pinned for reproducibility; review release notes before
+upgrading it.
+
+```bash
+npm create vite@latest sentry-lab -- --template react-ts
+cd sentry-lab
+npm install
+npm install --save-exact @sentry/react@11.1.0
+```
+
+Keep the generated HTML element with `id="root"`. No backend, account, or upload token is required
+for the local capture step.
+
+## 1. Initialize before the app
+
+Create `src/instrument.ts`:
+
+```ts
+import * as Sentry from '@sentry/react';
+
+const projectDsn = import.meta.env.VITE_SENTRY_DSN;
+
+Sentry.init({
+  // The synthetic DSN is only used with the local transport below.
+  dsn: projectDsn || 'https://public@example.invalid/1',
+  environment: 'learning',
+  tracesSampleRate: 0,
+  beforeSendLog: () => null,
+  beforeSendMetric: () => null,
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: false,
+    httpBodies: [],
+    urlQueryParams: false,
+  },
+  ...(projectDsn
+    ? {}
+    : {
+        transport: () => ({
+          send: async (envelope) => {
+            console.info('Local Sentry envelope', envelope);
+            return { statusCode: 200 };
+          },
+          flush: async () => true,
+        }),
+      }),
+});
+```
+
+The custom transport is only a learning aid, not a reliable event queue or a replacement backend.
+An envelope can contain an error event or other SDK bookkeeping; inspect the item type before
+assuming each envelope represents an issue. Keep this console output limited to synthetic data.
+Sources: [React initialization](https://docs.sentry.io/platforms/javascript/guides/react/) and
+[custom transports](https://docs.sentry.io/platforms/javascript/guides/react/configuration/transports/).
+
+## 2. Wire React error capture
+
+Replace `src/main.tsx`:
+
+```tsx
+import './instrument';
+import { createRoot } from 'react-dom/client';
+import * as Sentry from '@sentry/react';
+import App from './App';
+
+createRoot(document.getElementById('root')!, {
+  onUncaughtError: Sentry.reactErrorHandler(),
+  onCaughtError: Sentry.reactErrorHandler(),
+  onRecoverableError: Sentry.reactErrorHandler(),
+}).render(<App />);
+```
+
+These hooks apply to React 19. A boundary handles UI recovery; the root callbacks handle reporting.
+Avoid layering another reporting boundary without checking for duplicate events. Next.js owns its
+React root, so its integration uses [different hooks](/docs/knowledge/platforms/sentry/react-and-nextjs).
+
+Replace `src/App.tsx`:
+
+```tsx
+import { useState } from 'react';
+import * as Sentry from '@sentry/react';
+
+export default function App() {
+  const [eventId, setEventId] = useState('');
+  const [crash, setCrash] = useState(false);
+  if (crash) throw new Error('Sentry learning render failure');
+
+  function reportHandledError() {
+    try {
+      throw new Error('Sentry learning handled failure');
+    } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('exercise', 'sentry-lab');
+        setEventId(Sentry.captureException(error));
+      });
+    }
+  }
+
+  return (
+    <main>
+      <h1>Sentry learning app</h1>
+      <button onClick={reportHandledError}>Capture handled error</button>
+      <button onClick={() => setCrash(true)}>Trigger render error</button>
+      <p role="status">{eventId ? `Captured locally: ${eventId}` : 'No error captured yet'}</p>
+    </main>
+  );
+}
+```
+
+The returned event ID identifies a capture attempt; it is not an acknowledgment from a Sentry backend.
+The render-error button deliberately removes the working UI because this tiny example has no recovery
+boundary. Reload after that test.
+
+## 3. Verify locally
+
+```bash
+npm run build
+npm run dev -- --host 127.0.0.1
+```
+
+Open the URL printed by Vite and the browser console. Click **Capture handled error**. Expect an event
+ID in the page and a `Local Sentry envelope` containing the synthetic message and `exercise` tag.
+Click **Trigger render error** and inspect the React error event, then reload. Depending on the dev
+runtime, the same failure can be surfaced more than once; use a production preview to investigate
+unexpected duplication.
+
+The network panel should show no requests to Sentry while `VITE_SENTRY_DSN` is unset. This proves local
+SDK capture and transport wiring, not backend ingestion, issue grouping, or source-map resolution.
+
+## 4. Optional: send to a learning project
+
+Create or use a Sentry learning project, copy its DSN, and add it to uncommitted `.env.local`:
+
+```dotenv
+VITE_SENTRY_DSN=your-project-dsn
+```
+
+Replace that value with the project's actual DSN. Restart Vite because the variable is loaded when
+the dev server starts. This switches the sample to normal network delivery. Trigger one synthetic
+handled error and locate it in Sentry's Issues view, filtering to environment `learning`. Check the
+message, tag, stack, and event ID. Do not use real user input for this exercise.
+
+For a production bundle, add [source-map uploads](/docs/knowledge/platforms/sentry/releases-and-data),
+rebuild, serve the exact output with `npm run preview -- --host 127.0.0.1`, and verify original source
+lines in Sentry. An auth token belongs only in the build environment, never in a `VITE_` variable.
+
+## Troubleshooting and cleanup
+
+| Symptom                                      | Check                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------ |
+| Console envelope but no Sentry issue         | Local-only transport is still selected; this is expected without a project DSN |
+| Event ID but no envelope or delivery         | Inspect SDK errors, filters, buffering, and the configured transport           |
+| Browser blocks delivery                      | Network policy, content blockers, CSP `connect-src`, or an invalid DSN         |
+| Event appears in the wrong place             | DSN project and environment filters                                            |
+| Production stack is minified                 | Maps uploaded for this exact build; inspect upload results and debug IDs       |
+| Every expected user mistake becomes an issue | Narrow the capture boundary and distinguish routine validation from defects    |
+
+Stop the dev/preview server with Ctrl+C. Remove the test buttons and local console transport before
+adopting the integration in a real application. Remove `.env.local` if discarding the lab, and resolve
+or remove synthetic issues according to the learning project's policy. This lab does not configure
+alerts or notify other people.

@@ -1,0 +1,27 @@
+---
+title: TanStack Start
+description: Full-stack application conventions around TanStack Router.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://tanstack.com/start/latest/docs/framework/react/overview
+---
+
+TanStack Start builds a full-stack application model around TanStack Router, including server
+rendering and server functions. Router supplies route matching and type-aware navigation; Start
+adds application/server integration. TanStack Query is a separate data-cache library and can be
+used with or without Start.
+
+It is worth evaluating when a team values TanStack Router's route typing and wants server
+capabilities in the same ecosystem. Assess the chosen version's host support, authentication
+pattern, caching, and operational requirements before committing to a deployment architecture.
+Do not infer compatibility from another TanStack package's version or adoption.
+
+Start from the official overview and setup documentation, then build one representative flow:
+read data on the server, mutate it with authorization, refresh the browser view, and deploy to
+the intended host. Compare that result with [Next.js](./nextjs) using the same workload rather
+than selecting a framework solely from synthetic build benchmarks.
+
+Official source: [TanStack Start documentation](https://tanstack.com/start/latest/docs/framework/react/overview).

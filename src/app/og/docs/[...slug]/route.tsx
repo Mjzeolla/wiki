@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { siteConfig } from '@/config/site';
 import { getPageImage, source } from '@/lib/source';
 
+export const dynamic = 'force-static';
 export const revalidate = false;
 
 export async function GET(_request: Request, { params }: RouteContext<'/og/docs/[...slug]'>) {

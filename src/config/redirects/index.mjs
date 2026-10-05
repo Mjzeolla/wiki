@@ -34,6 +34,14 @@ const repositoryToolDomains = {
 };
 
 export const documentationRedirects = [
+  permanentRedirect(
+    '/docs/knowledge/tooling/frontend/frameworks/vite',
+    '/docs/knowledge/tooling/frontend/build-tools/vite',
+  ),
+  permanentRedirect(
+    '/docs/knowledge/tooling/frontend/nextjs',
+    '/docs/knowledge/tooling/frontend/frameworks/nextjs',
+  ),
   permanentRedirect('/docs/playbooks/new-mac', '/docs/playbooks/development/new-mac'),
   ...[
     'developer-toolchain',

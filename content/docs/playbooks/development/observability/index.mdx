@@ -1,0 +1,33 @@
+---
+title: Observability and Discovery Labs
+description: Local exercises for metrics, traces, discovery, dashboards, and application error capture.
+tags:
+  - observability
+  - playbooks
+status: growing
+sources:
+  - https://prometheus.io/docs/prometheus/latest/getting_started/
+  - https://opentelemetry.io/docs/languages/python/getting-started/
+  - https://developer.hashicorp.com/consul/commands/agent
+---
+
+Learn one responsibility at a time using native localhost processes. The core local exercises need no cloud
+accounts, shared clusters, or production configuration. The Sentry lab includes an optional project-delivery step. Python examples keep the application small;
+the same metrics, tracing, and discovery concepts apply to Node.js and Go services.
+
+| Lab                              | Working result                                                               |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| [Prometheus](./prometheus)       | A Python worker exposes counters/histograms that Prometheus scrapes          |
+| [OpenTelemetry](./opentelemetry) | Related spans travel from a Python SDK to a local Collector                  |
+| [Consul](./consul)               | A service appears in healthy discovery, then disappears when its check fails |
+
+Use separate empty directories and terminal windows as directed. Install binaries from the linked
+official sources for your OS/architecture, and record the versions used. No global Python packages
+are required: each Python dependency example uses its own virtual environment. Stop foreground
+processes with Ctrl+C after the exercise.
+
+Read the [tool comparison](/docs/knowledge/tooling/observability) before trying to combine the labs.
+
+After metrics are flowing, build a dashboard in the [Grafana lab](./grafana).
+
+Inspect application errors with the [Sentry React capture lab](./sentry), then optionally connect a learning project.

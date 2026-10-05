@@ -1,0 +1,86 @@
+---
+title: HTTP Fundamentals
+description: Requests, response semantics, caching, retries, and how HTTP relates to REST and RPC.
+tags:
+  - protocols
+status: growing
+sources:
+  - https://httpwg.org/specs/rfc9110.html
+  - https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching
+  - https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS
+---
+
+HTTP defines request/response semantics: a method and target identify an operation, headers carry
+metadata, and a response includes a status and optional body. JSON is one representation; HTTP can
+also carry HTML, images, streams, or Protobuf. REST is an architectural style for using resources
+and constraints, not another name for HTTP or any JSON endpoint.
+
+## A request and response
+
+These are illustrative HTTP/1.1 messages, with framing details omitted:
+
+```http
+GET /products/42 HTTP/1.1
+Host: shop.example
+Accept: application/json
+If-None-Match: "product-42-v3"
+```
+
+```http
+HTTP/1.1 304 Not Modified
+ETag: "product-42-v3"
+Cache-Control: private, max-age=60
+```
+
+The client already has a representation with that validator, so a 304 lets it reuse that body.
+Without a matching validator, the server would normally return 200 and the current representation.
+The header `Content-Type` describes a body's format; `Accept` states which formats a client can accept.
+See [HTTP semantics](https://httpwg.org/specs/rfc9110.html).
+
+## Methods and outcomes
+
+| Method     | Typical purpose                                          | Retry consideration                            |
+| ---------- | -------------------------------------------------------- | ---------------------------------------------- |
+| GET / HEAD | Read a resource / its metadata                           | Safe and idempotent by defined semantics       |
+| PUT        | Replace the state at a known URI                         | Idempotent effect; responses may differ        |
+| DELETE     | Remove the resource's association with its URI           | Idempotent effect; a later call may return 404 |
+| POST       | Submit work or create according to the endpoint contract | Do not retry a write blindly                   |
+| PATCH      | Apply a partial change                                   | Idempotency depends on the operation           |
+
+Idempotent means repeated identical requests have the same intended server effect as one request;
+it does not mean each response is identical. For a payment POST, a server-enforced idempotency key
+can associate retries with one transaction. Define key scope, expiry, concurrency, and payload mismatch
+behavior. A network timeout leaves the outcome uncertain: the server may have committed the write.
+
+Common statuses include 201 for creation, 204 for success without content, 400 for an invalid request,
+401 for missing/invalid authentication, 403 for refused access, 404 for not found, 409 for a conflict,
+429 for rate limiting, and 5xx for server failures. Handle the API's actual error body and retry
+contract, rather than treating every non-200 response as the same problem.
+
+## Browser and shared caches
+
+- `Cache-Control: no-store` tells caches not to store the response.
+- `no-cache` allows storage but requires successful validation before reuse.
+- `private` prevents storage by shared caches; a browser cache may still store it.
+- `max-age` sets freshness; `s-maxage` targets shared caches such as a CDN.
+- `Vary` identifies request headers that select different representations.
+
+These policies do not clear an application's TanStack Query cache. Conversely, invalidating a query
+does not purge a CDN. Treat personalized data carefully and define a cache key that cannot mix
+accounts. See [HTTP caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
+and [React/Next.js caches](/docs/knowledge/tooling/frontend/frameworks/nextjs/caching).
+
+## Production concerns
+
+Use HTTPS for transport protection. Authenticate the caller and authorize each resource operation.
+CORS controls which browser origins may read responses; it is not authentication, and non-browser
+clients do not become trusted because they omit an Origin header. Cookie-based mutations also need
+a deliberate CSRF defense.
+
+Set timeouts and payload limits, propagate cancellation, return stable error shapes, and record a
+request/trace ID without logging secrets. Retry only suitable operations with a bounded budget and
+backoff. Consider proxy timeouts as well as application timeouts.
+
+HTTP/2 changes connection/framing behavior, not the meaning of GET or 404. [gRPC](./grpc) normally
+uses HTTP/2 but defines additional message framing and status handling; an ordinary JSON POST is
+not automatically a native gRPC call.

@@ -1,0 +1,124 @@
+---
+title: Prometheus Local Metrics Lab
+description: Expose a counter and histogram, scrape them, and query work rate and duration.
+tags:
+  - prometheus
+  - python
+  - playbooks
+status: growing
+sources:
+  - https://prometheus.io/download/
+  - https://github.com/prometheus/client_python
+  - https://prometheus.io/docs/prometheus/latest/getting_started/
+---
+
+## Prerequisites
+
+Use Python 3.10 or newer and the `prometheus` and `promtool` binaries from the
+[official download](https://prometheus.io/download/). Put the binaries on your PATH. Use free
+localhost ports 8000 and 9090. This native-process exercise does not require Docker.
+
+Create an empty `prometheus-lab` directory and run:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install prometheus-client
+python -m pip freeze > requirements.lock.txt
+prometheus --version
+promtool --version
+```
+
+The lock snapshot records this learning environment; dependency upgrades should be deliberate in a
+maintained app. The [official Python client](https://github.com/prometheus/client_python) owns the
+instrumentation APIs used below.
+
+## 1. Instrument a worker
+
+Save as `worker.py`:
+
+```python
+import time
+from prometheus_client import Counter, Histogram, start_http_server
+
+jobs = Counter("learning_jobs_total", "Completed learning jobs", ["outcome"])
+duration = Histogram(
+    "learning_job_duration_seconds",
+    "Time spent on one learning job",
+    buckets=(0.01, 0.05, 0.1, 0.5, 1.0),
+)
+
+if __name__ == "__main__":
+    start_http_server(8000, addr="127.0.0.1")
+    while True:
+        with duration.time():
+            time.sleep(0.02)
+        jobs.labels(outcome="success").inc()
+        time.sleep(1)
+```
+
+Run `python worker.py` and leave it running. In another terminal:
+
+```bash
+curl --fail http://127.0.0.1:8000/metrics
+```
+
+Expect `learning_jobs_total` plus histogram `_bucket`, `_count`, and `_sum` samples. The worker's
+counters reset when the process restarts; the Prometheus server stores observations separately.
+
+## 2. Configure and run Prometheus
+
+In the same lab directory, create `prometheus.yml`:
+
+```yaml
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: learning-worker
+    static_configs:
+      - targets: ['127.0.0.1:8000']
+```
+
+From that directory in a second terminal:
+
+```bash
+promtool check config prometheus.yml
+prometheus --config.file=prometheus.yml --storage.tsdb.path=./data --web.listen-address=127.0.0.1:9090
+```
+
+Prometheus stores only this lab's samples under `data/`. Visit [Prometheus](http://localhost:9090)
+and inspect the targets page. `learning-worker` should become up after a scrape.
+The [official getting-started guide](https://prometheus.io/docs/prometheus/latest/getting_started/)
+explains these configuration sections.
+
+## 3. Verify collection and queries
+
+After at least two scrape intervals, query:
+
+```text
+up{job="learning-worker"}
+```
+
+Expect `1`. Then query:
+
+```text
+rate(learning_jobs_total{outcome="success"}[1m])
+```
+
+Expect roughly one completed job per second after enough samples, not an exact accounting total.
+For duration and failure exercises, follow
+[PromQL and alerting](/docs/knowledge/platforms/prometheus/queries-and-alerts).
+
+## Troubleshooting and cleanup
+
+| Symptom                | Check                                                                     |
+| ---------------------- | ------------------------------------------------------------------------- |
+| Target down            | Worker is running and `curl` reaches port 8000 from the same machine      |
+| Empty rate             | Wait for multiple scrapes; inspect the counter and selected time range    |
+| Address already in use | Stop the conflicting lab process or update both listener and target ports |
+| YAML fails validation  | Check indentation and validate with `promtool` before restart             |
+
+Stop the worker and Prometheus with Ctrl+C. Deactivate the virtual environment. The directory
+contains all lab files and collected data; retain it for the alerting exercise or remove it when
+finished. No notification receiver is configured and no external alerts are sent.

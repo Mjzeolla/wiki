@@ -1,0 +1,119 @@
+---
+title: OpenTelemetry Local Trace Lab
+description: Export parent and child spans over OTLP HTTP to a Collector debug pipeline.
+tags:
+  - opentelemetry
+  - python
+  - playbooks
+status: growing
+sources:
+  - https://opentelemetry.io/docs/collector/configuration/
+  - https://opentelemetry.io/docs/languages/python/exporters/
+---
+
+## Prerequisites
+
+Use Python 3.10 or newer, a free local port 4318, and a Collector distribution containing the
+`otlp` receiver, `batch` processor, and `debug` exporter. Install through the
+[official Collector instructions](https://opentelemetry.io/docs/collector/installation/).
+Commands below assume the binary is `otelcol`; substitute your distribution's binary name if needed.
+
+In an empty `otel-lab` directory:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+python -m pip freeze > requirements.lock.txt
+otelcol --version
+```
+
+## 1. Run a trace pipeline
+
+Save as `collector.yaml`:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+processors:
+  batch: {}
+exporters:
+  debug:
+    verbosity: detailed
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+```
+
+Validate and start it in a terminal in the lab directory:
+
+```bash
+otelcol validate --config=collector.yaml
+otelcol --config=collector.yaml
+```
+
+The pipeline prints traces rather than storing them. See
+[Collector configuration](/docs/knowledge/tooling/observability/opentelemetry/collector) for its parts.
+
+## 2. Emit related spans
+
+Save as `trace_demo.py`:
+
+```python
+import time
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+provider = TracerProvider(resource=Resource.create({"service.name": "learning-worker"}))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://127.0.0.1:4318/v1/traces")
+    )
+)
+trace.set_tracer_provider(provider)
+tracer = trace.get_tracer("learning-example")
+
+try:
+    with tracer.start_as_current_span("process-job") as parent:
+        parent.set_attribute("job.kind", "demo")
+        with tracer.start_as_current_span("calculate-result"):
+            time.sleep(0.02)
+        parent.add_event("job-completed")
+finally:
+    provider.shutdown()
+```
+
+In a second terminal, activate the same virtual environment and run `python trace_demo.py`.
+The exporter uses OTLP/HTTP; do not send it to a gRPC-only 4317 listener. The explicit signal URL
+includes `/v1/traces`. SDK shutdown flushes the short-lived program's batch exporter.
+Source: [Python exporters](https://opentelemetry.io/docs/languages/python/exporters/).
+
+## 3. Verify the trace
+
+Inspect Collector output for `service.name: learning-worker`, two span names, and matching trace
+IDs. The child span's parent ID should equal the parent span's span ID. The parent should contain
+`job.kind` and the `job-completed` event. This proves parent-child context within one process;
+propagation between services additionally needs injection/extraction at transport boundaries.
+
+## Troubleshooting and next steps
+
+| Symptom                   | Check                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| Connection refused        | Collector is running and receiver address/port match                              |
+| HTTP 404 or export errors | Protocol and `/v1/traces` endpoint match the HTTP receiver                        |
+| Unknown component         | Installed Collector distribution includes all three configured components         |
+| No visible spans          | The traces pipeline references the receiver and exporter; allow batching to flush |
+
+Stop the Collector with Ctrl+C and deactivate the virtual environment. All files remain in the
+lab directory. For searchable retained traces, replace debug output with a chosen trace backend
+and verify export end to end. See the [OTel overview](/docs/knowledge/tooling/observability/opentelemetry)
+and [official Python guide](https://opentelemetry.io/docs/languages/python/getting-started/).

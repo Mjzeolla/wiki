@@ -1,0 +1,76 @@
+---
+title: Routing and Layouts
+description: App Router files, nested layouts, dynamic segments, loading states, and navigation.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://nextjs.org/docs/app/getting-started/layouts-and-pages
+  - https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes
+  - https://nextjs.org/docs/app/getting-started/error-handling
+---
+
+The App Router maps folders to route segments. A `page.tsx` exposes page UI; a `layout.tsx`
+wraps descendants. Start with the [basic walkthrough](/docs/playbooks/development/nextjs-basics)
+for a complete running example.
+
+## File conventions
+
+| Path                           | Role                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| `app/layout.tsx`               | Root document layout; includes `html` and `body`         |
+| `app/page.tsx`                 | Home page at `/`                                         |
+| `app/account/layout.tsx`       | Shared UI for account routes                             |
+| `app/account/page.tsx`         | Account overview at `/account`                           |
+| `app/articles/[slug]/page.tsx` | Article route with a variable URL segment                |
+| `app/account/loading.tsx`      | Loading fallback around the route's page and descendants |
+| `app/account/error.tsx`        | Client error boundary for failures below that boundary   |
+| `app/not-found.tsx`            | Missing-resource UI                                      |
+| `app/api/status/route.ts`      | HTTP endpoint rather than page UI                        |
+
+A folder alone does not create a public page. Route groups such as `(marketing)` organize
+layouts without adding that group name to the URL. Avoid defining a page and a Route Handler
+at the same route. See [layouts and pages](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
+and [Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
+
+## Dynamic route example
+
+This standalone file can be added as `app/articles/[slug]/page.tsx` to the walkthrough app:
+
+```tsx
+import { notFound } from 'next/navigation';
+
+const articles = new Map([['hello', { title: 'Hello Next.js', body: 'A small local article.' }]]);
+
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = articles.get(slug);
+  if (!article) notFound();
+
+  return (
+    <article>
+      <h1>{article.title}</h1>
+      <p>{article.body}</p>
+    </article>
+  );
+}
+```
+
+`/articles/hello` resolves the local article; another slug selects the not-found response.
+The promise-shaped `params` follows current App Router conventions. A dynamic URL segment does
+not itself prove a page must render at request time: known paths can be pregenerated with
+`generateStaticParams`. See [dynamic segments](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes).
+
+## Navigation, loading, and errors
+
+Use `next/link` for ordinary internal navigation. It allows the framework to manage transitions
+and prefetching. Use imperative navigation only when an interaction calls for it; normal links
+preserve expected browser behavior. Shared layouts can retain UI across navigation, but state
+inside a replaced page need not persist.
+
+Put loading and error boundaries around meaningful UI sections. An `error.tsx` boundary does not
+catch failures in the layout at its own segment; a higher boundary is needed. Treat expected
+validation failures as explicit results rather than throwing every user mistake into an error
+page. Refer to [navigation](https://nextjs.org/docs/app/getting-started/linking-and-navigating)
+and [error handling](https://nextjs.org/docs/app/getting-started/error-handling).

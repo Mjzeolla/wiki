@@ -1,0 +1,38 @@
+---
+title: Webpack and Rspack
+description: Application bundling and the practical limits of ecosystem compatibility.
+tags:
+  - frontend
+  - build-tools
+status: growing
+sources:
+  - https://webpack.js.org/concepts/
+  - https://rspack.rs/guide/start/introduction
+---
+
+Webpack builds a dependency graph from entry points and uses loaders/plugins to transform modules
+and emit assets. It offers a mature configuration ecosystem, but large configurations and slow
+builds may require profiling and maintenance. Read the [core concepts](https://webpack.js.org/concepts/)
+before treating every option as a performance fix.
+
+Rspack is a Rust-based bundler designed for compatibility with much of the Webpack ecosystem.
+Compatibility is not universal: validate each plugin/loader and framework integration used by the
+application. It is useful to evaluate when an established Webpack build is a bottleneck and a
+full framework migration would be unnecessary. See [Rspack's introduction](https://rspack.rs/guide/start/introduction).
+
+A Webpack configuration sketch for plain JavaScript, assuming Webpack and its CLI are installed:
+
+```js
+// webpack.config.cjs
+module.exports = {
+  mode: 'production',
+  entry: './src/index.js',
+  output: { filename: 'app.js', clean: true },
+};
+```
+
+This emits into Webpack's default output directory; it does not configure TypeScript, JSX, CSS,
+or HTML. Add only the loaders/plugins the app needs. Before migration, compare emitted assets,
+source maps, dynamic imports, CSS ordering, environment values, and production smoke tests.
+Use [Vite](./vite) when its higher-level development workflow fits better than maintaining a
+custom bundler configuration.

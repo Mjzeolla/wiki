@@ -1,0 +1,71 @@
+---
+title: Health and Discovery
+description: Interpret service registration, health checks, discovery responses, and stale instances.
+tags:
+  - consul
+  - service-discovery
+status: growing
+sources:
+  - https://developer.hashicorp.com/consul/api-docs/agent/service
+  - https://developer.hashicorp.com/consul/api-docs/health
+---
+
+A useful discovery result includes a routable address, the intended service port, and health
+information appropriate to the caller. A service merely appearing in the catalog is insufficient.
+
+## Register, check, discover
+
+The [local lab](/docs/playbooks/development/observability/consul) registers through the agent API:
+
+```json
+{
+  "ID": "learning-api-1",
+  "Name": "learning-api",
+  "Address": "127.0.0.1",
+  "Port": 8088,
+  "Check": {
+    "HTTP": "http://127.0.0.1:8088/health",
+    "Interval": "5s",
+    "Timeout": "1s"
+  }
+}
+```
+
+That address only works for this same-machine exercise. In a real topology, use the address
+clients can reach. The agent performing the HTTP check must also be able to reach its configured
+URL. Registration IDs distinguish instances even when their logical service name is the same.
+Source: [agent service API](https://developer.hashicorp.com/consul/api-docs/agent/service).
+
+A health-filtered query is:
+
+```bash
+curl --fail 'http://127.0.0.1:8500/v1/health/service/learning-api?passing=true'
+```
+
+Inspect `Service.Address`, `Service.Port`, and `Checks` in each result. An empty array means no
+instance satisfied this query, not that the API failed. Requests without passing filtering may
+include unhealthy instances. See the [health API](https://developer.hashicorp.com/consul/api-docs/health).
+
+## Failure and lifecycle
+
+An application stopping can change a check to critical while its registration remains in the
+catalog. Deregistration removes the registration; these are separate operations. Decide how an
+orchestrator or deployment process creates and removes instance registrations, and how stale
+instances are handled. Do not use frequent deregistration to disguise an unhealthy service.
+
+Health checks should be bounded and cheap. A readiness check may include dependencies needed to
+serve traffic; an overly broad check can remove every replica during one dependency incident.
+Clients still need timeouts and retry policy because health information is never an instantaneous
+guarantee that the next request succeeds.
+
+## Production questions
+
+- What system owns registration and cleanup?
+- Which network can the checker and discovery client reach?
+- What health condition should exclude an instance?
+- What happens during stale reads, discovery failure, or loss of quorum?
+- Which ACL identity may register services or read discovery results?
+
+Follow the version-specific [Consul docs](https://developer.hashicorp.com/consul/docs) for ACLs,
+transport security, quorum, and persistence. Discovery access and application authorization are
+separate controls; being discoverable is not permission to call a protected operation.

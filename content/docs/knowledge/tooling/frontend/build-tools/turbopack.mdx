@@ -1,0 +1,24 @@
+---
+title: Turbopack
+description: Next.js integrated bundling and when to keep framework defaults.
+tags:
+  - frontend
+  - build-tools
+status: growing
+sources:
+  - https://nextjs.org/docs/app/api-reference/turbopack
+---
+
+Turbopack is an incremental bundler integrated into Next.js. It operates below application concepts
+such as Server Components and routes. Changing a bundler does not change those concepts.
+
+For the Next.js 16 generation used by this wiki, normal `next dev` and `next build` use Turbopack.
+The explicit `--webpack` flag selects the alternative where supported. Use the
+[version-specific reference](https://nextjs.org/docs/app/api-reference/turbopack) for feature and
+loader compatibility; a Webpack plugin is not automatically a Turbopack plugin.
+
+Keep the framework default unless a concrete compatibility problem or measured performance issue
+justifies another path. When debugging, compare one representative production build, CSS/assets,
+and dynamic imports in each supported mode. Avoid mixing configuration examples from different
+Next.js releases. See [Next.js deployment](../frameworks/nextjs/deployment) for the artifact and
+hosting layer above the bundler.

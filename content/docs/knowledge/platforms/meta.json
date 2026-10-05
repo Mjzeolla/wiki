@@ -1,4 +1,4 @@
 {
   "title": "Platforms and Applications",
-  "pages": ["index", "opensearch"]
+  "pages": ["index", "opensearch", "prometheus", "consul", "grafana", "sentry"]
 }

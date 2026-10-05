@@ -1,0 +1,32 @@
+---
+title: Astro
+description: Content-first pages with selective client interactivity.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://docs.astro.build/en/concepts/why-astro/
+---
+
+Astro is designed for content-driven sites. It can render HTML with UI components from supported
+frameworks and hydrate only selected interactive components. This can reduce browser JavaScript
+for mostly static pages. A dashboard with tightly shared interactive state needs deliberate island
+boundaries; splitting everything into islands is not automatically helpful.
+
+An illustrative Astro page using an installed React integration:
+
+```text
+---
+import Counter from '../components/Counter.tsx';
+---
+<h1>Documentation</h1>
+<Counter client:visible />
+```
+
+`client:visible` schedules hydration when the component becomes visible; it is not a React prop.
+Use an appropriate directive for controls that must work immediately. Astro can prerender content
+or use on-demand rendering with an appropriate adapter. Check hosting requirements before adding
+server features. Start with the [official tutorial](https://docs.astro.build/en/tutorial/).
+
+Official source: [Astro documentation](https://docs.astro.build/en/concepts/why-astro/).

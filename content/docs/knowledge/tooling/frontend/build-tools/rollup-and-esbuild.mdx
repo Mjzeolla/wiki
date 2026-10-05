@@ -1,0 +1,51 @@
+---
+title: Rollup and esbuild
+description: Library output, focused bundles, and the limits of syntax transformation.
+tags:
+  - frontend
+  - build-tools
+status: growing
+sources:
+  - https://rollupjs.org/introduction/
+  - https://esbuild.github.io/api/
+---
+
+Rollup is a JavaScript module bundler with an output/plugin model often useful for libraries.
+It supports different output formats and tree-shaking. esbuild provides fast bundling,
+minification, and syntax transformation. They are build components, not full-stack frameworks.
+Sources: [Rollup introduction](https://rollupjs.org/introduction/) and [esbuild](https://esbuild.github.io/).
+
+A minimal Rollup ESM library configuration, assuming JavaScript input:
+
+```js
+// rollup.config.mjs
+export default {
+  input: 'src/index.js',
+  external: ['react', 'react/jsx-runtime'],
+  output: { file: 'dist/index.js', format: 'es', sourcemap: true },
+};
+```
+
+Keeping React external avoids bundling a separate React copy into this library; publish compatible
+peer dependencies and include subpath imports your code uses. Package exports and declaration files
+are separate responsibilities from emitting JavaScript.
+
+An esbuild configuration sketch with `esbuild` installed:
+
+```js
+import { build } from 'esbuild';
+
+await build({
+  entryPoints: ['src/index.ts'],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  packages: 'external',
+  outfile: 'dist/index.js',
+  sourcemap: true,
+});
+```
+
+This targets Node, not browser code, and leaves package dependencies external. TypeScript syntax
+transformation is not type checking; run TypeScript separately. Test output under the actual
+runtime, especially module interop, external dependencies, native modules, and source-map behavior.

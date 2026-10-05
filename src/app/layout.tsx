@@ -1,7 +1,7 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import type { Metadata } from 'next';
-import { siteConfig } from '@/config/site';
+import { publicPath, siteConfig } from '@/config/site';
 import './global.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: { template: `%s | ${siteConfig.name}`, default: siteConfig.name },
   description: siteConfig.description,
-  icons: { icon: '/icon.svg' },
+  icons: { icon: publicPath('/icon.svg') },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {
@@ -26,6 +26,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
     >
       <body className="flex min-h-screen flex-col">
         <RootProvider
+          search={{ options: { type: 'static', api: publicPath('/api/search') } }}
           theme={{
             // React 19.2 does not execute scripts rendered by client components. Mark the
             // next-themes bootstrap payload as inert until its upstream fix is released:

@@ -1,0 +1,66 @@
+---
+title: Deployment and Configuration
+description: Match Next.js features to hosting, configure environment variables, and verify production behavior.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://nextjs.org/docs/app/getting-started/deploying
+  - https://nextjs.org/docs/app/guides/static-exports
+  - https://nextjs.org/docs/app/guides/environment-variables
+  - https://nextjs.org/docs/app/guides/self-hosting
+---
+
+Choose hosting based on the server features the application uses. Vercel is one option; a Node.js
+server or Docker container can run Next.js too. See the [official deployment guide](https://nextjs.org/docs/app/getting-started/deploying).
+
+## Hosting choices
+
+| Mode             | Appropriate use                                 | Constraint to check                                        |
+| ---------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Node.js server   | Full application on a VM or managed Node host   | Process lifecycle, reverse proxy, runtime configuration    |
+| Container        | Reproducible server deployment                  | Build/runtime separation, assets, writable cache needs     |
+| Managed platform | Platform-managed application runtime            | Supported features, limits, persistence, regional behavior |
+| Static export    | Content that can become files ahead of requests | No request-time server rendering or Server Actions         |
+
+Static export is not the same as serving a normal `.next` directory. It is a configured output
+mode with documented limits. Client requests to a separate backend remain possible, but a static
+host does not execute Next.js server code. Some build-time GET output is possible; dynamic
+request handlers are not. Read [static exports](https://nextjs.org/docs/app/guides/static-exports).
+
+## Environment variables
+
+Next.js loads environment files according to its documented precedence. Server-only credentials
+must stay in server code. `NEXT_PUBLIC_` values are exposed to browser code and inlined at build
+time; promoting one built artifact between environments does not automatically change them.
+Never put a secret behind that prefix. See [environment variables](https://nextjs.org/docs/app/guides/environment-variables).
+
+Use [runtime validation](../../types-and-validation/zod) to fail clearly when required
+configuration is missing. Distinguish build-time requirements from request-time requirements:
+a statically generated page may read its dependencies during the build.
+
+## Operating a server deployment
+
+Put an appropriate reverse proxy in front of a self-hosted server. Verify buffering settings when
+using streaming. With multiple instances, consider shared caches and deployment/version
+coordination rather than assuming each process's local cache is sufficient. The
+[self-hosting guide](https://nextjs.org/docs/app/guides/self-hosting) explains those concerns.
+
+For standalone output, follow the framework's packaging instructions, including static and public
+assets; copying only a server entry file is not a complete deployment. Keep long-running jobs and
+persistent state in services designed for them instead of assuming a request handler is a worker.
+
+## Release verification
+
+- Run formatting, linting, type checks, tests, and a production build.
+- Start the built application and check direct route loads, navigation, metadata, and assets.
+- Verify authenticated and unauthenticated behavior, errors, and mutation freshness.
+- Confirm the deployed environment values match the artifact's configuration model.
+- Keep the previous working artifact and a migration-compatible rollback plan.
+
+The [basic walkthrough](/docs/playbooks/development/nextjs-basics) demonstrates build/start checks
+for a small app. Use the [routing guide](./routing-and-layouts) to diagnose route placement and
+[data guide](./data-and-mutations) for cache and authorization concerns.
+
+For application failures and readable production stacks, see [Sentry setup](/docs/knowledge/platforms/sentry/react-and-nextjs) and [source-map uploads](/docs/knowledge/platforms/sentry/releases-and-data).

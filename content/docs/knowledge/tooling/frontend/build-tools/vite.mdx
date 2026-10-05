@@ -1,0 +1,64 @@
+---
+title: Vite
+description: Development and build tooling for client applications and framework integrations.
+tags:
+  - frontend
+  - build-tools
+status: growing
+sources:
+  - https://vite.dev/guide/
+  - https://vite.dev/guide/ssr.html
+  - https://vite.dev/guide/static-deploy.html
+  - https://vite.dev/guide/env-and-mode.html
+---
+
+Vite provides a development server and a production build pipeline. It can work with React,
+Vue, and other UI technologies. It does not, by itself, choose your application's routing,
+authentication, database, or API architecture. See the [official introduction](https://vite.dev/guide/).
+
+## Vite versus Next.js
+
+| Concern                | Vite with React                                        | Next.js                                                           |
+| ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Primary responsibility | Development tooling and bundling                       | Integrated React application framework                            |
+| Routing                | Add a router or use a framework built on Vite          | App Router file conventions                                       |
+| Server rendering       | Use an integration/framework or implement SSR plumbing | Framework-supported rendering                                     |
+| Backend                | Separate service or chosen integration                 | Route Handlers and Server Functions, optionally separate services |
+| Typical deployment     | Static build output plus API                           | Server/container/platform, or constrained static export           |
+
+Vite's [SSR API](https://vite.dev/guide/ssr.html) is a lower-level integration surface. A plain
+React template is not equivalent to a complete full-stack framework, but frameworks can build
+on Vite and supply those missing decisions.
+
+## Useful features and tradeoffs
+
+Fast development feedback, hot module replacement, asset handling, and a plugin ecosystem make
+Vite useful for client applications and shared frontend packages. The flexibility is valuable
+when the backend already exists. It also means the team owns more integration choices than with
+Next.js: router conventions, data loading, error handling, and deployment need a coherent plan.
+
+For the official React/TypeScript starter, choose `react-ts` in the
+[scaffolding guide](https://vite.dev/guide/#scaffolding-your-first-vite-project).
+A generated project normally has `index.html`, `src/`, and Vite configuration; it does not use
+Next.js `app/page.tsx` conventions.
+
+## Production considerations
+
+- `vite build` produces deployment artifacts; the usual output directory is `dist`.
+- `vite preview` is a local build preview, not a production server.
+- Configure the hosting base path and direct-route behavior for the selected router.
+- Keep type checking and linting in the project checks, rather than assuming bundling proves correctness.
+
+Consult [static deployment](https://vite.dev/guide/static-deploy.html) and your chosen host's
+routing configuration. For rendering choices, read [SPA and server rendering](../frameworks/rendering-models).
+
+## Environment variables
+
+Client code accesses exposed values through `import.meta.env`. Variables with the `VITE_` prefix
+are exposed to client code by default, so they must not contain secrets. Build-time substitution
+also means changing a host environment variable does not automatically change an already-built
+browser bundle. See [environment variables and modes](https://vite.dev/guide/env-and-mode.html).
+
+For a React app that needs integrated server rendering and server entry points, compare
+[Next.js](../frameworks/nextjs). For an existing API plus browser UI, a Vite client app is a reasonable
+starting point; evaluate the required router and data tooling explicitly.

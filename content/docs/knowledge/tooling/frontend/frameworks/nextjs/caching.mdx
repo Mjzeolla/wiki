@@ -1,0 +1,302 @@
+---
+title: Client and Server Caching
+description: Compare React memoization, browser query caches, and Next.js server caches with code.
+tags:
+  - nextjs
+  - react
+  - caching
+status: growing
+sources:
+  - https://react.dev/reference/react/cache
+  - https://react.dev/reference/react/useMemo
+  - https://nextjs.org/docs/app/api-reference/directives/use-cache
+  - https://nextjs.org/docs/app/api-reference/functions/cacheLife
+  - https://nextjs.org/docs/app/api-reference/functions/updateTag
+  - https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults
+  - https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr
+---
+
+Cache ownership answers four questions: **what is reused, who can reuse it, how long it remains
+acceptable, and which event invalidates it?** A catalog description can tolerate a minute of delay;
+a checkout price or authorization decision may need a fresh authoritative read.
+
+The examples use React 19, TanStack Query v5, and Next.js 16 App Router. The Next.js example explicitly
+enables Cache Components. This guide describes application patterns; it does not enable server
+caching in this wiki's static GitHub Pages deployment.
+
+## Which cache are we talking about?
+
+| Mechanism                          | Lives where / scope                                     | What it reuses                                                 | What it does not do                                         |
+| ---------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| React `useMemo`                    | Component instance during rendering                     | A computation while dependencies remain equal                  | Fetch, persist, or synchronize remote data                  |
+| React `cache` in Server Components | Server render request                                   | Function results for repeated calls with equal arguments       | Share results across independent requests                   |
+| TanStack Query `QueryClient`       | Usually browser memory; scope is the client instance    | Remote-data results by query key                               | Invalidate a server/CDN cache                               |
+| Next.js `use cache`                | Server/framework cache, plus related client reuse rules | Cached function/component output                               | Automatically know when an external database write happened |
+| Next.js client router cache        | Browser                                                 | Route segments / React Server Component payload for navigation | Act as your general-purpose query cache                     |
+| Browser HTTP cache / CDN           | Browser or shared HTTP intermediary                     | HTTP responses under HTTP cache rules                          | Clear an application library's memory                       |
+
+Client Components can participate in an initial server render. “Client cache” here describes
+ownership/lifetime, not a promise that a component executes only in a browser. A module-level
+QueryClient on an SSR server can accidentally be shared across requests; create isolated server
+clients per request. See [React cache](https://react.dev/reference/react/cache),
+[TanStack SSR](https://tanstack.com/query/latest/docs/framework/react/guides/ssr), and
+[Next.js cache behavior](https://nextjs.org/docs/app/api-reference/directives/use-cache).
+
+## Same product list, two owners
+
+| Decision      | Browser query owns freshness                       | Next.js server owns freshness                                            |
+| ------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Read          | Browser calls an API                               | Server Component calls a data function                                   |
+| Good fit      | Polling, filters, optimistic interactions          | Initial content and broadly reusable public reads                        |
+| Share results | Components using the same QueryClient and key      | Requests using the same cache identity within the configured cache scope |
+| After a write | Invalidate/set the matching query data             | Invalidate tagged/path data, then update the displayed route             |
+| Cost          | Client JS and a request unless hydrated/prefetched | Server cache configuration and invalidation coordination                 |
+
+Neither approach makes data permanently correct. Use a fresh transactional check for decisions
+such as whether an item can still be purchased. Cacheable display data is not an authorization rule.
+
+## Example A: browser-owned remote data
+
+Install `@tanstack/react-query` and provide a stable QueryClient near the application root. This
+minimal provider is for a browser data flow; advanced server prefetching requires the SSR/hydration
+setup from the official guide.
+
+```tsx
+// app/query-provider.tsx (or src/query-provider.tsx in a React SPA)
+'use client';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
+
+export function QueryProvider({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient());
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+```
+
+Wrap the UI that uses queries in this provider. The following component works in a React SPA or
+under that provider in a Next.js app. It assumes an existing `GET /api/products` endpoint returning
+an array of `{ id, name }` objects. Runtime validation here keeps the example's boundary explicit.
+
+```tsx
+// app/products/product-list.tsx
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+
+type Product = { id: string; name: string };
+
+async function fetchProducts(signal: AbortSignal): Promise<Product[]> {
+  const response = await fetch('/api/products', { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error('Products could not be loaded');
+  const data: unknown = await response.json();
+  if (!Array.isArray(data)) throw new Error('Invalid product response');
+  return data.map((item: unknown) => {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      !('id' in item) ||
+      typeof item.id !== 'string' ||
+      !('name' in item) ||
+      typeof item.name !== 'string'
+    )
+      throw new Error('Invalid product');
+    return { id: item.id, name: item.name };
+  });
+}
+
+export function ProductList() {
+  const query = useQuery({
+    queryKey: ['products'],
+    queryFn: ({ signal }) => fetchProducts(signal),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  if (query.isPending) return <p>Loading products…</p>;
+  if (query.isError) return <p role="alert">{query.error.message}</p>;
+  return (
+    <ul>
+      {query.data.map((product) => (
+        <li key={product.id}>{product.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`staleTime` is a freshness window, not an automatic 60-second polling interval. Stale queries can
+refetch on configured events such as mounting, window focus, or reconnecting. `gcTime` controls how
+long an **inactive** query remains in memory. A second mounted component with the same key/client
+can reuse the data. A page reload normally creates a new in-memory client unless persistence was
+explicitly added. See [Query defaults](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults).
+
+The browser fetch's `no-store` policy does not disable TanStack Query's own cache and does not bypass
+a server's internal cached data function. The endpoint must also define its server/CDN freshness.
+Use [Zod](../../types-and-validation/zod) for larger response schemas instead of expanding manual checks.
+
+## Example B: server-owned public data
+
+This is a separate Next.js 16 application example using a server runtime. Enable Cache Components:
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const config: NextConfig = { cacheComponents: true };
+export default config;
+```
+
+Cache the public read behind one function. This in-memory fixture keeps the read example runnable;
+in an application, replace the returned fixture with the actual database/backend read.
+
+```ts
+// app/products/data.ts
+import { cacheLife, cacheTag } from 'next/cache';
+
+export async function getProducts() {
+  'use cache';
+  cacheLife({ stale: 60, revalidate: 60, expire: 300 });
+  cacheTag('products');
+  return [{ id: 'p1', name: 'Notebook' }];
+}
+```
+
+```tsx
+// app/products/page.tsx
+import { getProducts } from './data';
+
+export default async function ProductsPage() {
+  const products = await getProducts();
+  return (
+    <ul>
+      {products.map((product) => (
+        <li key={product.id}>{product.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+No browser query library is needed to render this list. Arguments to a cached function participate
+in its cache identity; include tenant/locale/filter inputs when they change the result. Tags group
+entries for invalidation; a tag is not the cache key or an access-control boundary.
+
+`cacheLife` values are seconds. `stale` affects client reuse, `revalidate` controls when server data
+can refresh in the background, and `expire` controls when an old entry needs blocking regeneration.
+These values are not a promise that a backend is queried on a wall-clock timer. Storage lifetime
+and sharing between server instances depend on deployment and cache handlers. Sources:
+[cacheLife](https://nextjs.org/docs/app/api-reference/functions/cacheLife) and
+[use cache](https://nextjs.org/docs/app/api-reference/directives/use-cache).
+
+Do not read cookies/headers inside an ordinary shared `use cache` function. Resolve identity outside
+it, authorize access, and choose an explicit per-user policy or an uncached read. Avoid caching
+secrets or authorization decisions merely because a key contains a user ID.
+
+## React memoization is a third concept
+
+These are schematic fragments: `products`, `filter`, and `db` are application inputs/dependencies.
+
+```tsx
+// Client: avoid repeating an expensive computation for unchanged inputs.
+const visible = useMemo(
+  () => products.filter((product) => product.name.includes(filter)),
+  [products, filter],
+);
+```
+
+```ts
+// Server Components: deduplicate calls within a render request.
+import { cache } from 'react';
+
+export const getProduct = cache(async (id: string) => {
+  return db.product.findUnique({ where: { id } });
+});
+```
+
+React `cache` does not make that database result survive into the next request. Reuse the same
+memoized function and stable arguments; creating a new memoized function at each call defeats
+sharing. `useMemo` is a performance optimization, not a correctness or persistence guarantee.
+Sources: [cache](https://react.dev/reference/react/cache) and [useMemo](https://react.dev/reference/react/useMemo).
+
+## After a mutation: invalidate the layer that owns the read
+
+| Operation                                                   | Effect                                                                    | What remains your responsibility                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `queryClient.invalidateQueries({ queryKey: ['products'] })` | Marks matching queries invalid; active ones normally refetch              | Server/CDN freshness                                    |
+| `router.refresh()`                                          | Requests and merges a fresh server-rendered route payload                 | Underlying cached server data may still be reused       |
+| `updateTag('products')`                                     | Expires tagged server data for immediate fresh reads; Server Actions only | Client query caches outside the action's UI flow        |
+| `revalidateTag('products', 'max')`                          | Marks tagged server data for stale-while-revalidate                       | Accepting that a subsequent read may initially be stale |
+| `revalidatePath('/products')`                               | Invalidates data/output associated with a path                            | Other paths and separately owned query caches           |
+
+In a browser query flow, run this after a **successful** authorized API mutation, using the client
+from `useQueryClient()`:
+
+```ts
+await queryClient.invalidateQueries({ queryKey: ['products'] });
+```
+
+For the server flow, the application-specific mutation skeleton is:
+
+```ts
+// app/products/actions.ts
+'use server';
+
+import { updateTag } from 'next/cache';
+import { renameProductAuthorized } from '@/lib/product-service';
+
+export async function renameProduct(id: string, name: string) {
+  // Application service: validate, authenticate, authorize, then commit the write.
+  // This import is an integration seam, not a supplied database implementation.
+  await renameProductAuthorized({ id, name });
+  updateTag('products');
+}
+```
+
+A database failure must not be presented as a successful update. For an authenticated external
+webhook where stale-while-revalidate is acceptable, a Route Handler can instead call
+`revalidateTag('products', 'max')` after verifying and processing the event. Do not use `updateTag`
+inside a Route Handler. See [updateTag](https://nextjs.org/docs/app/api-reference/functions/updateTag),
+[revalidateTag](https://nextjs.org/docs/app/api-reference/functions/revalidateTag), and
+[useRouter](https://nextjs.org/docs/app/api-reference/functions/use-router).
+
+## Combining server rendering and browser queries
+
+Server prefetch plus Query hydration can provide initial HTML and later browser interactions.
+Create a fresh QueryClient for each server request, prefetch with the same key/query contract,
+dehydrate it, and hydrate under the browser provider. Set a deliberate stale time to avoid an
+unwanted immediate duplicate request. Follow the
+[advanced SSR guide](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr).
+
+If both the server and browser cache the same data, a successful write must handle both owners.
+For example: commit write → expire the server tag → invalidate the browser query → refetch. If only
+the query is invalidated, its refetch can receive the same stale server result. If only the tag is
+expired, an already fresh browser query may keep displaying its old result. Router refresh alone
+does not invalidate an unrelated QueryClient.
+
+For account-specific queries, include stable identity in keys, isolate SSR state, and cancel/remove
+protected queries on sign-out or account switching. Persisted caches need the same policy. Never
+serialize secrets into dehydrated data sent to the browser.
+
+## Previous Next.js caching model
+
+Applications without Cache Components can use explicit server fetch options such as:
+
+```ts
+const response = await fetch('https://api.example.com/products', {
+  next: { revalidate: 60, tags: ['products'] },
+});
+```
+
+This illustrative URL needs a real endpoint. It describes Next.js's server fetch extension, not
+browser fetch. The older model distinguishes the Data Cache, Full Route Cache, and client Router
+Cache. Read the [previous-model guide](https://nextjs.org/docs/app/guides/caching-without-cache-components)
+for its defaults and interactions. Do not combine incompatible route/fetch settings from that model
+with Cache Components recipes without checking migration guidance.
+
+## Verify ownership, not just the first render
+
+Load the page twice, navigate away/back, focus the tab, and reload completely. Count backend reads
+to see which cache is reused. Then change data through the UI and an external writer; verify both
+paths reach the required freshness. Test two users and two tenants so cached results cannot cross
+access boundaries. A production build is more representative than development HMR caching.

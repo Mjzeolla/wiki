@@ -1,0 +1,352 @@
+---
+title: Go and React RPC Lab
+description: Generate a shared contract, implement a Go service, and call it from React and native gRPC.
+tags:
+  - grpc
+  - go
+  - react
+  - playbooks
+status: growing
+sources:
+  - https://connectrpc.com/docs/go/getting-started/
+  - https://connectrpc.com/docs/web/using-clients/
+  - https://buf.build/docs/configuration/v2/buf-gen-yaml/
+---
+
+Build a tiny greeting service in Go and call it from React using a shared Protobuf contract. The
+browser uses **Connect**, while a second check uses **native gRPC** against the same Go handler.
+Read [React/Go transport choices](/docs/knowledge/protocols/grpc/react-and-go) first.
+
+## Prerequisites
+
+Use a current Go toolchain (this lab was checked with Go 1.26), Node 22.14+ with npm, and free local
+ports 8080 and 5173. Work in a new disposable directory. No Docker, cloud account, BSR publication,
+or globally installed protoc is required. The example intentionally has no authentication and binds
+the server to loopback; it is a learning app, not a production service template.
+
+## 1. Install pinned generators
+
+```bash
+mkdir rpc-lab
+cd rpc-lab
+go mod init example.com/rpc-lab
+npm init -y
+npm install --save-dev --save-exact @bufbuild/buf@1.73.0 @bufbuild/protoc-gen-es@2.16.0
+go get -tool google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+go get -tool connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.21.0
+```
+
+`go get -tool` records local Go tools in `go.mod`; `go tool` runs their pinned versions. Commit
+`go.mod`, `go.sum`, and npm lockfiles in a real project. The Buf npm package supplies the CLI;
+if your package manager asks to approve its installer, review the named package before approval.
+Check the installation with `npx buf --version`.
+
+## 2. Define and generate the contract
+
+Create `proto/learning/greet/v1/greet.proto`:
+
+```protobuf
+syntax = "proto3";
+
+package learning.greet.v1;
+
+option go_package = "example.com/rpc-lab/gen/learning/greet/v1;greetv1";
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string greeting = 1;
+}
+
+service GreetService {
+  rpc Greet(GreetRequest) returns (GreetResponse);
+}
+```
+
+Create `buf.yaml` at the project root:
+
+```yaml
+version: v2
+modules:
+  - path: proto
+lint:
+  use: [STANDARD]
+breaking:
+  use: [FILE]
+```
+
+Create `buf.gen.yaml` beside it:
+
+```yaml
+version: v2
+plugins:
+  - local: [go, tool, protoc-gen-go]
+    out: gen
+    opt: paths=source_relative
+  - local: [go, tool, protoc-gen-connect-go]
+    out: gen
+    opt: [paths=source_relative, simple]
+  - local: node_modules/.bin/protoc-gen-es
+    out: web/src/gen
+    opt: target=ts
+```
+
+The `simple` Connect-Go option is deliberate: it generates handlers receiving ordinary Protobuf
+pointers. Omitting it selects a different handler signature in this release. Protobuf-ES v2 emits
+both message and service descriptors; this browser example does not need a separate
+`protoc-gen-connect-es` plugin.
+
+```bash
+npx buf lint
+npx buf build
+npx buf generate
+```
+
+Expect `gen/learning/greet/v1/greet.pb.go`, the `greetv1connect` subdirectory, and
+`web/src/gen/learning/greet/v1/greet_pb.ts`. Do not hand-edit them. There are no external schema imports,
+so this lab does not need a `buf.lock`; add one when dependencies are resolved.
+
+## 3. Implement Go behavior
+
+Create `cmd/server/main.go`:
+
+```go
+package main
+
+import (
+    "context"
+    "errors"
+    "log"
+    "net/http"
+    "strings"
+    "time"
+
+    "connectrpc.com/connect"
+    greetv1 "example.com/rpc-lab/gen/learning/greet/v1"
+    "example.com/rpc-lab/gen/learning/greet/v1/greetv1connect"
+)
+
+type greeter struct{}
+
+func (greeter) Greet(ctx context.Context, req *greetv1.GreetRequest) (*greetv1.GreetResponse, error) {
+    if err := ctx.Err(); err != nil {
+        return nil, err
+    }
+    name := strings.TrimSpace(req.GetName())
+    if name == "" || len(name) > 80 {
+        return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name must contain 1–80 bytes"))
+    }
+    return &greetv1.GreetResponse{Greeting: "Welcome, " + name}, nil
+}
+
+func main() {
+    mux := http.NewServeMux()
+    path, handler := greetv1connect.NewGreetServiceHandler(greeter{})
+    mux.Handle(path, handler)
+    protocols := new(http.Protocols)
+    protocols.SetHTTP1(true)
+    protocols.SetUnencryptedHTTP2(true) // Local-only h2c for the native gRPC check.
+    server := &http.Server{
+        Addr: "127.0.0.1:8080", Handler: mux, Protocols: protocols,
+        ReadHeaderTimeout: 5 * time.Second,
+    }
+    log.Println("RPC lab listening on 127.0.0.1:8080")
+    log.Fatal(server.ListenAndServe())
+}
+```
+
+This handler rejects blank and overlong input. Validation belongs on the server even when the
+browser also validates. The local HTTP/2 setting permits h2c for the native gRPC check; use an
+appropriate TLS/proxy configuration for a deployed service.
+
+```bash
+go mod tidy
+go run ./cmd/server
+```
+
+Leave that terminal running. From a second terminal in the project root, call the unary Connect
+endpoint using JSON:
+
+```bash
+curl --fail-with-body --silent \
+  -H 'Content-Type: application/json' \
+  -H 'Connect-Protocol-Version: 1' \
+  --data '{"name":"Reader"}' \
+  http://127.0.0.1:8080/learning.greet.v1.GreetService/Greet
+```
+
+Then call the same method with native gRPC over HTTP/2:
+
+```bash
+npx buf curl --schema . --protocol grpc --http2-prior-knowledge \
+  --data '{"name":"Reader"}' \
+  http://127.0.0.1:8080/learning.greet.v1.GreetService/Greet
+```
+
+Both should report `Welcome, Reader`. The JSON output from Buf is its display format, not evidence
+that the native gRPC request used a JSON wire encoding. Sending an empty name should produce an
+`invalid_argument` error.
+
+## 4. Add the browser app
+
+Create these files inside the existing `web/` directory. `web/package.json`:
+
+```json
+{
+  "name": "rpc-lab-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.16.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-web": "2.2.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "5.9.3",
+    "vite": "8.3.1"
+  }
+}
+```
+
+`web/tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["ES2022", "DOM"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}
+```
+
+`web/index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>RPC Lab</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+`web/vite.config.ts`:
+
+```ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/learning.greet.v1.GreetService': 'http://127.0.0.1:8080',
+    },
+  },
+});
+```
+
+`web/src/main.tsx`:
+
+```tsx
+import { useState, type FormEvent } from 'react';
+import { createRoot } from 'react-dom/client';
+import { createClient } from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-web';
+import { GreetService } from './gen/learning/greet/v1/greet_pb';
+
+const client = createClient(
+  GreetService,
+  createConnectTransport({
+    baseUrl: window.location.origin,
+  }),
+);
+
+function App() {
+  const [name, setName] = useState('Reader');
+  const [result, setResult] = useState('');
+  const [pending, setPending] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setResult('');
+    try {
+      const reply = await client.greet({ name }, { timeoutMs: 2000 });
+      setResult(reply.greeting);
+    } catch (error) {
+      setResult(error instanceof Error ? error.message : 'Request failed');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <label>
+        Name <input value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <button disabled={pending}>{pending ? 'Calling…' : 'Greet'}</button>
+      <p role="status">{result}</p>
+    </form>
+  );
+}
+
+createRoot(document.getElementById('root')!).render(<App />);
+```
+
+This simple event-driven example makes one bounded request and displays either the response or an
+error. A larger app should centralize safe error presentation and use a data library where cache
+invalidation or background refetching is needed.
+
+```bash
+cd web
+npm install
+npm run build
+npm run dev
+```
+
+Open [the local app](http://127.0.0.1:5173), click **Greet**, and expect `Welcome, Reader`. The browser
+calls its own origin; Vite forwards only the service path to Go. Production hosting must supply an
+equivalent reverse proxy or a deliberate CORS configuration. A `dist/` upload by itself does not deploy
+the Go backend or Vite's development proxy.
+
+## 5. Verify failure and cleanup
+
+Clear the name and submit: the server should reject it. Stop Go and submit again: the UI should show
+a failure and re-enable the button. Inspect the browser network request to distinguish transport
+failure from a validation response. Restart Go to verify recovery.
+
+Stop the Go and Vite terminals with Ctrl+C when finished. Keep the schema and lockfiles if retaining
+the lab. Do not publish the generated SDK until you have chosen its ownership, visibility, and
+[release policy](/docs/knowledge/protocols/grpc/buf-and-distribution).
+
+## Official references
+
+- [Connect-Go setup and generation](https://connectrpc.com/docs/go/getting-started/)
+- [Connect browser clients](https://connectrpc.com/docs/web/using-clients/)
+- [Browser code generation](https://connectrpc.com/docs/web/generating-code/)
+- [Buf configuration](https://buf.build/docs/configuration/v2/buf-gen-yaml/)
+- [Vite server proxy](https://vite.dev/config/server-options#server-proxy)

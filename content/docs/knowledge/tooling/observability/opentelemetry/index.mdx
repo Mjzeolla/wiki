@@ -1,0 +1,65 @@
+---
+title: OpenTelemetry
+description: Instrumentation, signals, context propagation, and exporters without tying code to one backend.
+tags:
+  - observability
+  - opentelemetry
+status: growing
+sources:
+  - https://opentelemetry.io/docs/concepts/signals/
+  - https://opentelemetry.io/docs/concepts/context-propagation/
+  - https://opentelemetry.io/docs/languages/python/exporters/
+---
+
+OpenTelemetry (OTel) provides APIs, SDKs, instrumentation, conventions, and a Collector for
+producing and transporting telemetry. It is not a hosted monitoring product or a database.
+A backend is still needed to retain and query exported data. Begin with the
+[trace walkthrough](/docs/playbooks/development/observability/opentelemetry).
+
+## Core building blocks
+
+| Building block  | Purpose                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| API             | Calls application/library code uses to create telemetry              |
+| SDK             | Implements recording, processing, sampling, and export               |
+| Instrumentation | Adds observations manually or through library/framework integrations |
+| Resource        | Describes the emitting entity, such as `service.name`                |
+| Span            | A timed operation with attributes, events, and context               |
+| Trace           | Related spans sharing a trace ID                                     |
+| Exporter        | Sends telemetry to a destination                                     |
+| OTLP            | OpenTelemetry's telemetry transport protocol                         |
+| Collector       | Receives, processes, and forwards signals independently of app code  |
+
+Use [signals](https://opentelemetry.io/docs/concepts/signals/) to distinguish traces, metrics, and
+logs. Language support and maturity vary by signal; consult the
+[language documentation](https://opentelemetry.io/docs/languages/) before assuming identical APIs.
+
+## Context and instrumentation
+
+A trace is useful when downstream operations retain their relationship to the upstream request.
+Context propagation carries identifiers across process boundaries, commonly in HTTP headers.
+Creating unrelated spans in each service does not automatically create a distributed trace.
+Instrumentation can inject/extract context for supported clients and servers. See
+[context propagation](https://opentelemetry.io/docs/concepts/context-propagation/).
+
+Automatic instrumentation covers common framework/library boundaries. Manual spans add domain
+meaning, such as `calculate-shipping`, where framework spans are too generic. Avoid instrumenting
+the same operation twice. Use stable service names and semantic conventions so queries remain
+consistent across services.
+
+## Strengths and costs
+
+OTel reduces dependence on a backend-specific instrumentation API and can standardize telemetry
+across languages. It still requires decisions about attributes, sampling, SDK initialization,
+export failure, and backend compatibility. Exporting every span with large payloads can create
+substantial cost and sensitive-data exposure.
+
+Keep attributes intentional: no credentials, authorization headers, or unrestricted request bodies.
+Sampling reduces volume but changes what evidence is available. Head sampling decides early;
+tail sampling makes a decision after observing more of a trace and introduces Collector topology
+and buffering concerns. Read [sampling](https://opentelemetry.io/docs/concepts/sampling/).
+
+Use batch export for normal services and flush/shut down cleanly for short-lived programs.
+[Python exporters](https://opentelemetry.io/docs/languages/python/exporters/) describes the APIs
+used in the lab. See [Collector pipelines](./collector) for the next stage and
+[Prometheus](/docs/knowledge/platforms/prometheus) for metrics storage.

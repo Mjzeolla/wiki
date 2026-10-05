@@ -1,0 +1,84 @@
+---
+title: Dashboards and Provisioning
+description: Version data-source connections and dashboards while keeping runtime credentials separate.
+tags:
+  - grafana
+  - observability
+status: growing
+sources:
+  - https://grafana.com/docs/grafana/latest/administration/provisioning/
+  - https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/
+---
+
+Use the UI to explore a query, then store stable dashboard and data-source definitions in Git when
+reproducibility matters. Choose one owner: a file-provisioned dashboard can overwrite UI changes
+when its source changes. Export intentional edits back to the maintained source.
+
+## A Prometheus data source
+
+Place this example in the configured Grafana provisioning directory under `datasources/learning.yaml`:
+
+```yaml
+apiVersion: 1
+datasources:
+  - name: Learning Prometheus
+    uid: learning-prometheus
+    type: prometheus
+    access: proxy
+    url: http://127.0.0.1:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s
+```
+
+This URL assumes native Grafana and Prometheus on the same machine. In containers, use the
+Prometheus service hostname on their shared network; `127.0.0.1` would address Grafana's own
+container. `timeInterval` tells Grafana the scrape interval so rate-query sizing is meaningful.
+Use stable UIDs so dashboards do not depend on display names. Source:
+[provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/).
+
+## Dashboard design
+
+| Question                | Panel/query pattern                                             |
+| ----------------------- | --------------------------------------------------------------- |
+| Is collection working?  | Stat panel using `up{job="learning-worker"}`                    |
+| How busy is the worker? | Time series using `rate(learning_jobs_total[$__rate_interval])` |
+| How slow are jobs?      | Histogram quantile with bucket aggregation preserving `le`      |
+| What changed?           | Compare time ranges and annotate known deployments              |
+
+`$__rate_interval` is a Grafana query variable, not something to paste into Prometheus's expression
+browser unchanged. Prefer it for interactive dashboard rates after configuring the scrape interval.
+See [Prometheus query editor](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/).
+
+## A dashboard provider
+
+For a native installation, this illustrative provider watches a directory you create and fill
+with exported dashboard JSON; replace the path for your environment:
+
+```yaml
+apiVersion: 1
+providers:
+  - name: learning
+    orgId: 1
+    folder: Learning
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /absolute/path/to/learning-dashboards
+```
+
+Place it under `provisioning/dashboards/`. The provider YAML points to JSON files; it is not itself
+a dashboard. `disableDeletion` avoids deleting a dashboard merely because its file disappears;
+plan explicit cleanup. The [provisioning reference](https://grafana.com/docs/grafana/latest/administration/provisioning/)
+describes file scanning and version behavior.
+
+## Access and operational checks
+
+Keep data-source passwords and API tokens out of committed YAML/JSON; inject them through supported
+secret configuration. Folder permissions and data-source permissions are different concepts and
+capabilities vary by edition. Do not treat a dashboard filter as a data access boundary.
+Back up the application database and provisioned files, and test queries after data-source or
+plugin upgrades. Alert evaluations need working backend connectivity even with no browser open.

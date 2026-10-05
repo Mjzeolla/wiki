@@ -1,0 +1,41 @@
+---
+title: Observability Tooling
+description: Separate instrumentation, telemetry transport, metrics storage, and service discovery.
+tags:
+  - observability
+  - tooling
+status: growing
+sources:
+  - https://opentelemetry.io/docs/concepts/signals/
+  - https://prometheus.io/docs/guides/opentelemetry/
+---
+
+Observability is the ability to explain system behavior from emitted evidence. Metrics summarize
+measurements, traces follow operations across boundaries, and logs record events. Each signal
+answers different questions; collecting everything without a question can be expensive and noisy.
+
+| Technology                                         | Owns                                                                | Does not replace                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------- |
+| [Prometheus](/docs/knowledge/platforms/prometheus) | Metrics collection, storage, PromQL, rule evaluation                | Log or trace storage                                |
+| [OpenTelemetry](./opentelemetry)                   | Instrumentation APIs/SDKs, conventions, export, Collector pipelines | A durable query backend or dashboard                |
+| [Consul](/docs/knowledge/platforms/consul)         | Service registration, health-aware discovery, optional mesh         | Telemetry storage or an application scheduler       |
+| [Sentry](/docs/knowledge/platforms/sentry)         | Application error issues, stacks, releases, and tracing context     | Service discovery or a universal telemetry pipeline |
+
+## How they can fit together
+
+```text
+Application → OTel SDK → Collector → trace/log/metric backend
+Application → /metrics ← Prometheus → rules → Alertmanager
+Consul catalog → discover application addresses for clients or scrapers
+```
+
+This is a set of compatible patterns, not a requirement to install all these tools. Prometheus can also
+receive OpenTelemetry metrics through supported integration paths; choose one intentional metrics
+path instead of reporting the same measurements twice. See the
+[Prometheus OTel guide](https://prometheus.io/docs/guides/opentelemetry/).
+
+Start with the [observability labs](/docs/playbooks/development/observability). They isolate one
+responsibility at a time before introducing production topology, access controls, retention, or
+sampling. [OTel signals](https://opentelemetry.io/docs/concepts/signals/) provides the terminology.
+
+[Grafana](/docs/knowledge/platforms/grafana) provides dashboards and exploration over these backends; try the [dashboard lab](/docs/playbooks/development/observability/grafana) after Prometheus.

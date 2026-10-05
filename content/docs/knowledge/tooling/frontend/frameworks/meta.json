@@ -1,0 +1,4 @@
+{
+  "title": "Frameworks",
+  "pages": ["index", "rendering-models", "nextjs", "astro", "react-router", "tanstack-start"]
+}

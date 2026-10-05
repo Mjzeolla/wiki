@@ -1,0 +1,65 @@
+---
+title: Consul
+description: Service registration, health-aware discovery, and the boundary between discovery and service mesh.
+tags:
+  - consul
+  - networking
+  - service-discovery
+status: growing
+sources:
+  - https://developer.hashicorp.com/consul/docs/intro
+  - https://developer.hashicorp.com/consul/docs/architecture
+  - https://developer.hashicorp.com/consul/commands/agent
+---
+
+Consul helps services find other services as instances move or change health. It maintains a
+catalog and provides discovery interfaces; it can also support service mesh capabilities. It does
+not deploy your application or store its traces. Try the
+[local discovery lab](/docs/playbooks/development/observability/consul).
+
+## Core concepts
+
+| Concept          | Meaning                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| Service name     | Logical identity, such as `learning-api`                         |
+| Service ID       | Particular registration, such as `learning-api-1`                |
+| Address and port | Where a caller can reach that instance                           |
+| Health check     | Evidence used to classify readiness/health                       |
+| Catalog          | Registered services and nodes                                    |
+| Discovery        | Finding candidate instances through DNS or HTTP APIs             |
+| Server quorum    | Consensus group managing authoritative cluster state             |
+| Service mesh     | Additional proxy/identity/policy layer for service communication |
+
+Registration says an instance exists; it does not prove the address is reachable by every client.
+Health is measured from the checker's network position. A process can pass a simple check while
+still failing important user operations. See [Consul's overview](https://developer.hashicorp.com/consul/docs/intro)
+and [architecture](https://developer.hashicorp.com/consul/docs/architecture).
+
+## Discovery versus mesh
+
+A discovery client obtains addresses and connects to the application. Consul does not automatically
+proxy every connection simply because the service is registered. A service mesh introduces further
+components for traffic policy and secure service communication. Learn registration and health first;
+add mesh only when identity, traffic policy, or operational requirements justify it.
+
+## Where it is useful
+
+Consul is useful in dynamic VM or mixed environments where hard-coded service addresses become
+fragile. It introduces another control plane: quorum, upgrades, certificates, access controls,
+backups, and stale-discovery behavior need ownership. If an existing platform already provides
+adequate discovery, an additional catalog may add complexity without solving a real problem.
+
+Consul is not a secrets manager. Its key/value capabilities do not replace a dedicated secret
+lifecycle. It is also not a metrics backend: [Prometheus](../prometheus) measures behavior and
+[OpenTelemetry](/docs/knowledge/tooling/observability/opentelemetry) produces telemetry.
+
+## Learning path
+
+1. Run the [localhost lab](/docs/playbooks/development/observability/consul).
+2. Read [health and discovery](./health-and-discovery) to interpret registration and passing results.
+3. Consult the [official docs](https://developer.hashicorp.com/consul/docs) for your installed version
+   before designing a production cluster or mesh.
+
+The walkthrough's development agent is deliberately ephemeral and local. It is not a production
+cluster design. Check the current deployment model and security guidance for the chosen Consul
+version rather than promoting the development flags into a shared environment.

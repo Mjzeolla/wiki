@@ -6,3 +6,12 @@ export const siteConfig = {
   docsContentRoute: '/llms.mdx/docs',
   docsImageRoute: '/og/docs',
 } as const;
+
+// Next Link applies basePath itself; use this helper for raw assets and fetch URLs only.
+export function publicPath(path: string) {
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${path}`;
+}
+
+export function publicMarkdown(text: string) {
+  return text.replace(/\((\/docs)(?=[/)#])/g, `(${publicPath('/docs')}`);
+}

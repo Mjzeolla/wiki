@@ -37,8 +37,11 @@ Install [Mise](https://mise.jdx.dev/getting-started.html), then run:
 
 ```bash
 make setup
-make dev
+make run
 ```
+
+You can also run `mise run dev` directly; `make dev` remains an alias for `make run`.
+Stop the development server with Ctrl+C.
 
 Open [http://localhost:3000/docs](http://localhost:3000/docs).
 
@@ -86,3 +89,15 @@ configuration, routes, metadata, and deployment.
 See [Content model](docs/contributing/content-model.md) and
 [Development standards](docs/contributing/development.md) before adding new structure or
 tooling.
+
+## GitHub Pages
+
+The CI workflow checks the Node deployment and documentation links. The separate **GitHub Pages**
+workflow runs validation and builds the static export. Pull requests validate the export; successful
+builds on `main` deploy through the `github-pages` environment.
+See [GitHub Pages hosting](docs/operations/github-pages.md) for activation, visibility, preview,
+custom domains, and rollback.
+
+```bash
+mise exec -- pnpm build:pages
+```

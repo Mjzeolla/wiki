@@ -1,0 +1,25 @@
+---
+title: Application Frameworks
+description: Compare routing, rendering, and application architecture separately from build tooling.
+tags:
+  - frontend
+  - frameworks
+status: growing
+sources:
+  - https://react.dev/learn/creating-a-react-app
+---
+
+Frameworks coordinate application behavior: routing, data loading, rendering, and deployment
+conventions. [Build tools](../build-tools) transform and bundle source code. A framework can use
+a build tool internally, so choosing one does not mean choosing the other as a competing product.
+
+| Framework                          | Useful starting point                                               | What to evaluate                                           |
+| ---------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [Next.js](./nextjs)                | Integrated React app with Server Components and server entry points | Cache model, deployment features, server/client boundaries |
+| [Astro](./astro)                   | Content-heavy site with selectively interactive components          | Island boundaries and server adapter needs                 |
+| [React Router](./react-router)     | React routing ranging from a library to framework mode              | Which mode owns loading, rendering, and deployment         |
+| [TanStack Start](./tanstack-start) | Full-stack React using TanStack Router                              | Host integration, server functions, and ecosystem fit      |
+
+Read [SPA and server rendering](./rendering-models) before choosing. Rendering architecture and
+build performance are separate decisions; switching bundlers does not automatically change your
+application into a server-rendered framework. See [React's framework guidance](https://react.dev/learn/creating-a-react-app).

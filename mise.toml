@@ -10,6 +10,10 @@ lockfile = true
 description = "Install dependencies and Husky hooks"
 run = "pnpm install --frozen-lockfile"
 
+[tasks.dev]
+description = "Start the local development server"
+run = "pnpm dev"
+
 [tasks.check]
 description = "Run repository checks"
 run = "pnpm check"

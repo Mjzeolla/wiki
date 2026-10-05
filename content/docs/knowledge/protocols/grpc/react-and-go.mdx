@@ -1,0 +1,59 @@
+---
+title: React and Go RPC
+description: Choose a browser-compatible transport while keeping one Protobuf service contract.
+tags:
+  - grpc
+  - react
+  - go
+status: growing
+sources:
+  - https://grpc.io/docs/platforms/web/basics/
+  - https://connectrpc.com/docs/multi-protocol/
+  - https://connectrpc.com/docs/web/using-clients/
+---
+
+React does not speak a network protocol itself. A browser client library sends requests from your
+components or data layer. Browser networking APIs do not expose everything required by native gRPC,
+so a generated Go gRPC service is not automatically callable using ordinary browser `fetch`.
+
+## Integration choices
+
+| Architecture         | Browser path                                      | Go side                                                             |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| gRPC-Web             | gRPC-Web client → compatible proxy/server         | grpc-go behind a translating proxy, or a server supporting gRPC-Web |
+| Connect              | Connect-ES browser client → Connect protocol      | Connect-Go handler can accept Connect, gRPC-Web, and native gRPC    |
+| Backend for frontend | Browser → Next.js HTTP/Server Action → RPC client | Native service; credentials and server client stay in Next.js       |
+
+The gRPC-Web project documents its browser protocol and proxy setup in the
+[browser tutorial](https://grpc.io/docs/platforms/web/basics/). Connect documents its
+[multiple protocol support](https://connectrpc.com/docs/multi-protocol/). Sharing Protobuf does not
+mean these transports are identical. Browser streaming capabilities depend on transport and client;
+do not promise native bidirectional streaming just because the schema declares it.
+
+## A practical local flow
+
+```text
+.proto → Go generators → Go handler on 127.0.0.1:8080
+       → Protobuf-ES → typed descriptor used by React
+browser → Vite development proxy → Go handler (Connect protocol)
+Go/native tooling → same Go handler (gRPC over HTTP/2)
+```
+
+The [walkthrough](/docs/playbooks/development/grpc-go-react) builds this flow and verifies both wire
+protocols. The Vite proxy is local development infrastructure. In production, configure an equivalent
+same-origin reverse proxy or explicit CORS for the trusted frontend origin. Do not deploy a frontend
+that assumes Vite's dev server is its production API gateway.
+
+## Keep transport separate from UI state
+
+Create one reusable typed client per appropriate connection context, then call it through a data
+hook such as TanStack Query when you need deduplication, retries, loading state, or invalidation.
+Generated code supplies method/message types; it does not choose a cache key or update your screen
+following a mutation. Include identity and filter inputs in data-cache keys, and clear protected
+client data when a user signs out.
+
+A server-side Next.js client can keep service credentials off the browser. Authenticate the browser
+request and authorize the operation before forwarding it; a BFF is still a security boundary.
+Use a server-compatible RPC transport, propagate deadlines and trace context, and deliberately map
+upstream errors into the public API. Read [Connect browser clients](https://connectrpc.com/docs/web/using-clients/)
+and [Next.js data ownership](/docs/knowledge/tooling/frontend/frameworks/nextjs/data-and-mutations).

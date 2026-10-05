@@ -1,0 +1,92 @@
+---
+title: Sentry
+description: Application error investigation, tracing, releases, and how Sentry complements other observability tools.
+tags:
+  - sentry
+  - observability
+status: growing
+sources:
+  - https://docs.sentry.io/product/issues/
+  - https://docs.sentry.io/concepts/key-terms/tracing/
+  - https://docs.sentry.io/product/session-replay/web/
+  - https://docs.sentry.io/platforms/javascript/guides/node/opentelemetry/
+  - https://develop.sentry.dev/self-hosted/
+---
+
+Sentry helps answer **which application failures users encounter, where they originate, and which
+release introduced them**. Its SDKs send error events and context to a backend that groups related
+failures into issues. Tracing adds timing and request context; optional Replay can reconstruct a
+browser session around a problem. Start with the [React lab](/docs/playbooks/development/observability/sentry)
+and [React/Next.js integration guide](./react-and-nextjs).
+
+## Concepts that make an issue useful
+
+| Concept               | Meaning                                           | Example                                                 |
+| --------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| Event                 | One occurrence with stack/context                 | A checkout request failed in one session                |
+| Issue                 | Group of related events                           | Multiple occurrences of the same code defect            |
+| Breadcrumb            | Context preceding an event                        | Navigation or an HTTP request before the failure        |
+| Release / environment | Which build and deployment produced it            | Commit-derived release in staging versus production     |
+| Source map            | Maps compiled JavaScript positions back to source | A minified stack becomes a TypeScript filename and line |
+| Trace / span          | Timing and relationships between operations       | Browser interaction → API handler → database read       |
+| Replay                | A reconstruction of browser activity              | UI state leading up to a failed interaction             |
+
+An event count is not necessarily a count of unique affected users. Sampling, blocked requests,
+SDK coverage, and grouping affect what you see. An issue being marked resolved does not deploy a
+fix. Verify the release and check for recurrence. See [Issues](https://docs.sentry.io/product/issues/),
+[tracing](https://docs.sentry.io/concepts/key-terms/tracing/), and [Replay](https://docs.sentry.io/product/session-replay/web/).
+
+## Where it fits with the other tools
+
+| Tool                                                                 | Useful question                                       | Typical responsibility                                                 |
+| -------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| Sentry                                                               | Which code error affected this workflow?              | Application issues, stacks, releases, and correlated debugging context |
+| [Prometheus](../prometheus)                                          | Is request latency or error rate rising?              | Aggregate metrics, PromQL, and recording/alert rules                   |
+| [Grafana](../grafana)                                                | What changed across our telemetry backends?           | Dashboards, exploration, and configured alerting                       |
+| [OpenTelemetry](/docs/knowledge/tooling/observability/opentelemetry) | How do we instrument and export signals consistently? | APIs/SDKs, context propagation, and Collector pipelines                |
+| [Consul](../consul)                                                  | Where is a healthy service instance?                  | Service discovery and health registration                              |
+
+These roles overlap: Sentry also offers logs and other performance features, and Grafana can
+explore errors through its configured backends. Choose based on the investigation workflow and
+operational requirements, rather than assuming each product owns exactly one signal.
+
+A reasonable application setup might use Sentry for actionable code failures and Prometheus/Grafana
+for service-level trends. It does not require installing every product. A useful incident flow is:
+notice a service error-rate increase, identify the affected release, then inspect representative
+stacks and traces. Correlation requires consistent service/release/environment naming.
+
+## Sentry and OpenTelemetry
+
+OpenTelemetry is not a Sentry replacement UI, and adding Sentry does not automatically send all
+Collector signals to Sentry. SDK/runtime support and ingestion paths are specific. The current
+[Node integration guide](https://docs.sentry.io/platforms/javascript/guides/node/opentelemetry/)
+distinguishes Sentry-managed tracing from a separately managed OTel pipeline.
+
+Choose one deliberate owner for auto-instrumentation, propagation, and sampling. Initializing two
+independent instrumentors for the same HTTP/database library can create duplicate spans or broken
+parentage. Check the installed SDK major version before following older instructions about replacing
+its OpenTelemetry provider. Verify a browser-to-backend trace instead of assuming shared trace IDs
+will appear by installing both packages.
+
+## Strengths and tradeoffs
+
+Sentry provides an application-focused issue workflow, readable stacks, release context, and optional
+performance/replay data. The costs include SDK overhead, event volume, alert noise, data governance,
+and maintaining source-map uploads. Capturing every handled validation error as a defect makes the
+issue list less useful. Report unexpected failures with bounded context and keep routine user errors
+in normal UI handling.
+
+Hosted Sentry reduces backend operation work. [Self-hosted Sentry](https://develop.sentry.dev/self-hosted/)
+means operating its dependencies, upgrades, storage, and backups; it is a separate deployment project.
+Check current feature availability and retention for the chosen edition rather than assuming parity.
+
+## Adoption order
+
+Start with error capture, an environment label, and one verified test event. Add source maps and
+release identification before relying on production stacks. Then enable tracing with a measured
+sampling policy. Add Replay only after inspecting its masking and captured network/console data.
+Define an issue owner and actionable alert conditions; a backlog of untriaged events is not an
+incident-response process.
+
+Continue with [React and Next.js](./react-and-nextjs), [source maps and data controls](./releases-and-data),
+and the [local capture walkthrough](/docs/playbooks/development/observability/sentry).

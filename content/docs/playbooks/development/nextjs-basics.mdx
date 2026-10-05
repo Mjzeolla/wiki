@@ -1,0 +1,217 @@
+---
+title: Next.js Basic Walkthrough
+description: Build a small App Router application with two routes, shared navigation, a client counter, and a JSON endpoint.
+tags:
+  - nextjs
+  - react
+  - development
+  - playbooks
+status: growing
+sources:
+  - https://nextjs.org/docs/app/getting-started/installation
+  - https://nextjs.org/docs/app/getting-started/layouts-and-pages
+  - https://nextjs.org/docs/app/getting-started/server-and-client-components
+  - https://nextjs.org/docs/app/getting-started/route-handlers
+---
+
+Build a small application to see what Next.js adds to React. The result has `/`, `/about`, an
+interactive counter, shared navigation, and `/api/status`. Read the
+[Next.js overview](/docs/knowledge/tooling/frontend/frameworks/nextjs) for the React comparison and tradeoffs.
+
+## Prerequisites and scope
+
+Use a maintained Node.js release meeting the [official requirements](https://nextjs.org/docs/app/getting-started/installation)
+and npm. These examples target Next.js 16 App Router with TypeScript. Create a disposable learning
+project outside existing repositories; this procedure does not modify the wiki application.
+No database, credentials, authentication, or external API is required.
+
+## 1. Create the application
+
+From a directory where you keep learning projects:
+
+```bash
+npx create-next-app@latest nextjs-basics
+cd nextjs-basics
+```
+
+Choose customized settings: **TypeScript**, **ESLint**, **App Router**, no `src/` directory, and
+the default `@/*` import alias. Tailwind and React Compiler are unnecessary for this exercise;
+choose no when offered. Other optional prompts can keep their defaults. If you choose `src/`, put
+all example `app/` paths under `src/app/` instead.
+
+`@latest` is convenient for exploration and changes over time. Keep the generated lockfile and
+record the installed version with `npm ls next react react-dom` when reproducing the exercise.
+The [installation guide](https://nextjs.org/docs/app/getting-started/installation) explains the CLI.
+
+## 2. Define the shared layout
+
+Replace `app/layout.tsx` with:
+
+```tsx
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+
+export const metadata: Metadata = {
+  title: 'Next.js Basics',
+  description: 'A small application for learning the App Router.',
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <nav aria-label="Main navigation">
+          <Link href="/">Home</Link>
+          {' | '}
+          <Link href="/about">About</Link>
+        </nav>
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+```
+
+The root layout supplies `html` and `body` and wraps both pages. This example deliberately uses
+browser-default styling and no downloaded font. Unused generated CSS can remain unimported.
+Metadata supplies the browser title and description. See [layouts](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
+and [metadata](https://nextjs.org/docs/app/getting-started/metadata-and-og-images).
+
+## 3. Add a Client Component
+
+Create `app/counter.tsx`:
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <section aria-label="Counter demo">
+      <p aria-live="polite">Count: {count}</p>
+      <button type="button" onClick={() => setCount((value) => value + 1)}>
+        Add one
+      </button>
+    </section>
+  );
+}
+```
+
+The state and click handler require a Client Component. Keep `"use client"` at this small
+interactive boundary; the surrounding pages do not need it.
+[Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+explains how the server-rendered UI becomes interactive.
+
+## 4. Add the pages
+
+Replace `app/page.tsx`:
+
+```tsx
+import Counter from './counter';
+
+export default function HomePage() {
+  return (
+    <>
+      <h1>Next.js Basics</h1>
+      <p>This page composes a server-rendered view and an interactive counter.</p>
+      <Counter />
+    </>
+  );
+}
+```
+
+Create `app/about/page.tsx` (create the `about` directory first):
+
+```tsx
+export default function AboutPage() {
+  return (
+    <>
+      <h1>About this demo</h1>
+      <p>The app/about/page.tsx file creates the /about route.</p>
+    </>
+  );
+}
+```
+
+Both pages are Server Components by default. The home page imports a Client Component without
+becoming one itself. File placement defines the routes; no separate router configuration is needed.
+
+## 5. Add an HTTP endpoint
+
+Create `app/api/status/route.ts`:
+
+```ts
+export async function GET() {
+  return Response.json({ status: 'ok', service: 'nextjs-basics' });
+}
+```
+
+This Route Handler returns JSON at `/api/status`. It is an HTTP endpoint, not a React page.
+The example proves routing works; it is not a readiness check for real dependencies. A production
+handler that reads user data also needs validation and authorization. See
+[Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
+
+Your example files now look like:
+
+```text
+app/
+├── layout.tsx
+├── page.tsx
+├── counter.tsx
+├── about/
+│   └── page.tsx
+└── api/
+    └── status/
+        └── route.ts
+```
+
+## 6. Run and verify
+
+```bash
+npm run dev
+```
+
+Open [the home page](http://localhost:3000), click **Add one**, and confirm the count increases.
+Follow **About** and confirm the same navigation remains visible. Reload `/about` directly to
+verify it is a real route. Returning home may reset the counter because its state is local to the
+mounted component; this demo does not persist it.
+
+In another terminal:
+
+```bash
+curl --fail http://localhost:3000/api/status
+```
+
+Expect JSON equivalent to `{"status":"ok","service":"nextjs-basics"}`. Stop the development
+server with Ctrl+C, then check and run the production build:
+
+```bash
+npx eslint .
+npx tsc --noEmit
+npm run build
+npm run start
+```
+
+Repeat the browser and endpoint checks. Run lint separately: Next.js 16 does not run it as part of
+`next build`. See the [installation and scripts reference](https://nextjs.org/docs/app/getting-started/installation).
+
+## Troubleshooting and next steps
+
+| Symptom                        | Check                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| Hook or event-handler error    | `app/counter.tsx` starts with `"use client"` before imports                           |
+| `/about` returns 404           | The file is `app/about/page.tsx`, not `app/about.tsx`; check whether you chose `src/` |
+| API returns HTML or 404        | Use `app/api/status/route.ts` and export uppercase `GET`                              |
+| Port 3000 is busy              | Use `npm run dev -- --port 3001` and update browser/curl URLs                         |
+| Production server cannot start | Run a successful build first and stop any server using the same port                  |
+
+Stop the server when finished. All exercise changes live in the new `nextjs-basics` directory;
+no wiki configuration or external service needs to be rolled back.
+
+Next, follow the [official Learn course](https://nextjs.org/learn), add a
+[server-side data read](https://nextjs.org/docs/app/getting-started/fetching-data), or explore
+[component variants](/docs/knowledge/tooling/frontend/styling/class-composition/cva).

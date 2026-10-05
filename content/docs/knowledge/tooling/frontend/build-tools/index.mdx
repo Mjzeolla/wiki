@@ -1,0 +1,33 @@
+---
+title: Build Tools
+description: Distinguish development servers, bundlers, transformers, and task orchestrators.
+tags:
+  - frontend
+  - build-tools
+status: growing
+sources:
+  - https://vite.dev/guide/
+  - https://webpack.js.org/concepts/
+---
+
+Build tools prepare application code for development and deployment. They do not inherently own
+routing, authorization, or server data loading. Use the tool supported by your framework unless
+there is measured evidence and a compatible migration path for changing it.
+
+| Tool                                       | Role                                        | Typical reason to choose it                                        |
+| ------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| [Vite](./vite)                             | Development server and build tooling        | Client apps and framework integrations                             |
+| [Webpack and Rspack](./webpack-and-rspack) | Configurable application bundlers           | Existing loader/plugin ecosystem or measured migration opportunity |
+| [Rollup and esbuild](./rollup-and-esbuild) | Bundling and transformation                 | Library output or a focused build pipeline                         |
+| [Turbopack](./turbopack)                   | Incremental bundler integrated with Next.js | Framework-supported development and production builds              |
+
+A compiler transforms syntax, a bundler follows imports and creates artifacts, and an orchestrator
+coordinates tasks across packages. Tools can span roles. [Monorepo orchestration](../../services/monorepos)
+explains why Turborepo or similar tools do not replace the bundler inside each package.
+
+Measure cold start, incremental edits, production build time, emitted size, and runtime behavior
+separately. A faster build does not prove faster page loads. Preserve source maps, asset paths,
+CSS behavior, environment handling, and plugin behavior in any migration.
+
+For application architecture, use [Frameworks](../frameworks); for deployment implications, use
+[rendering models](../frameworks/rendering-models).

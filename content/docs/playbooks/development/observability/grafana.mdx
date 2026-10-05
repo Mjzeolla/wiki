@@ -1,0 +1,92 @@
+---
+title: Grafana Dashboard Lab
+description: Connect Grafana to the local Prometheus worker and build useful panels.
+tags:
+  - grafana
+  - playbooks
+status: growing
+sources:
+  - https://grafana.com/docs/grafana/latest/setup-grafana/installation/
+  - https://grafana.com/docs/grafana/latest/datasources/prometheus/
+---
+
+## Prerequisites
+
+Finish the [Prometheus lab](./prometheus) and leave its worker and Prometheus running. Install
+Grafana natively using the [official OS-specific instructions](https://grafana.com/docs/grafana/latest/setup-grafana/installation/).
+Use a disposable local Grafana instance and a free port 3000. Stop the wiki dev server if it uses
+that port, or choose a different Grafana port.
+
+Before starting Grafana, bind its HTTP listener locally. For a foreground process these environment
+settings configure that process; for a package-managed service, put equivalent settings in its
+service environment or `[server]` configuration:
+
+```bash
+export GF_SERVER_HTTP_ADDR=127.0.0.1
+export GF_SERVER_HTTP_PORT=3000
+```
+
+Start it using the command/service instructions for your package. Open
+[local Grafana](http://localhost:3000). Follow the installation's initial administrator sign-in
+and password-change instructions. This walkthrough does not create any cloud account or notification destination.
+
+## 1. Connect Prometheus
+
+Open **Connections → Data sources**, add **Prometheus**, and set its URL to
+`http://127.0.0.1:9090`. Set the scrape interval to `5s` to match the worker lab. Save and test.
+UI labels may differ by release; use the
+[Prometheus data-source guide](https://grafana.com/docs/grafana/latest/datasources/prometheus/).
+
+This connection is made by the Grafana server, not directly by your browser. If you choose a
+container installation instead, use a reachable container/host address rather than blindly copying
+localhost. Prove the query works in Explore before building a dashboard:
+
+```text
+up{job="learning-worker"}
+```
+
+Expect `1` once Prometheus successfully scrapes the worker.
+
+## 2. Build three panels
+
+Create a dashboard and add these panels using the Prometheus source:
+
+| Panel              | Visualization       | Query                                              | Unit                            |
+| ------------------ | ------------------- | -------------------------------------------------- | ------------------------------- |
+| Collection healthy | Stat, instant query | `up{job="learning-worker"}`                        | None; map 1 to Up and 0 to Down |
+| Completed work     | Time series         | `sum(rate(learning_jobs_total[$__rate_interval]))` | Operations/second               |
+| p95 duration       | Time series         | Query below                                        | Seconds                         |
+
+```text
+histogram_quantile(
+  0.95,
+  sum by (le) (rate(learning_job_duration_seconds_bucket[$__rate_interval]))
+)
+```
+
+Use a recent time range such as the last 15 minutes and allow multiple scrapes. Save the dashboard
+as **Learning Worker**. The p95 is a bucket-based estimate, not the exact duration of each job.
+See [PromQL examples](/docs/knowledge/platforms/prometheus/queries-and-alerts).
+
+## 3. Test what the panels mean
+
+Stop the worker, leaving Prometheus and Grafana running. After a scrape, `up` should become zero;
+other series may retain historical samples or stop returning current data. Do not configure every
+missing value to display as zero: an absent signal is not necessarily a healthy system.
+Restart the worker and confirm recovery. A red panel alone does not send an alert.
+
+Export the dashboard JSON through the dashboard export/share controls and keep it with your lab
+files. It records panels and queries; it does not include the metric history. For repeatable
+installation, follow [provisioning](/docs/knowledge/platforms/grafana/dashboards-and-provisioning).
+
+## Troubleshooting and cleanup
+
+| Symptom                         | Check                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| Save/test cannot connect        | Grafana's process can reach Prometheus; compare native versus container networking |
+| No data                         | Correct data source, time range, labels, and sufficient scrape samples             |
+| Rates jump after zooming        | Inspect the query interval and configured scrape interval                          |
+| Existing app opens on port 3000 | Resolve the port conflict or change Grafana's listener                             |
+
+Stop only the lab processes with their documented service command or Ctrl+C. Remove the lab data
+source/dashboard through Grafana if reusing the instance; do not delete a shared Grafana database.
