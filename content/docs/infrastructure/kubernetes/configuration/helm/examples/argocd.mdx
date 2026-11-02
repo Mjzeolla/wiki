@@ -1,0 +1,107 @@
+---
+title: 'Example: Declare a Helm Chart Through Argo CD'
+description: 'Use the learning chart as an Application source and trace automated synchronization.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/helm/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/',
+  ]
+---
+
+## Start with the chart and an authorized GitOps lab
+
+Commit the chart and values from the [first chart exercise](/docs/infrastructure/kubernetes/configuration/helm/examples/first-chart) to a repository you own and push the reviewed source to `main`. Use an existing Argo CD installation in `argocd` and a dedicated existing namespace `helm-gitops-lab`. The example creates a ConfigMap only.
+
+The project and Application below require the real repository URL in place of `YOUR_ACCOUNT/helm-learning`. Repository permission and credentials are separate prerequisites; see [repository access](/docs/infrastructure/gitops/argocd/configuration/repository-access).
+
+Create `bootstrap/project.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: helm-learning
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/YOUR_ACCOUNT/helm-learning.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: helm-gitops-lab
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+```
+
+Create `bootstrap/application.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: helm-learning
+  namespace: argocd
+spec:
+  project: helm-learning
+  source:
+    repoURL: https://github.com/YOUR_ACCOUNT/helm-learning.git
+    targetRevision: main
+    path: charts/greeting
+    helm:
+      releaseName: gitops-learning
+      valuesObject:
+        message: hello-from-argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: helm-gitops-lab
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - FailOnSharedResource=true
+```
+
+## Follow the render inputs
+
+This is a Git-hosted chart: `path` locates its `Chart.yaml`, and `targetRevision` selects Git history. A chart-repository source instead uses `chart` and a chart version. The explicit Helm source settings provide the release name and input overrides. See [Argo CD Helm integration](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
+
+Reproduce this simple render locally:
+
+```bash
+helm template gitops-learning ./charts/greeting \
+  --namespace helm-gitops-lab \
+  --set-string message=hello-from-argocd
+```
+
+Expect `gitops-learning-greeting` in `helm-gitops-lab`, with the Argo CD message. Local rendering is useful evidence; the controller's Helm version, capabilities, and full inputs still determine its actual result.
+
+## Bootstrap and observe automated sync
+
+Verify your Kubernetes and Argo CD CLI contexts refer to the intended lab. Create the unused namespace and submit the two bootstrap declarations through the authorized operator workflow:
+
+```bash
+kubectl config current-context
+argocd context
+kubectl create namespace helm-gitops-lab
+kubectl apply -f bootstrap/project.yaml
+kubectl apply -f bootstrap/application.yaml
+argocd app get helm-learning --refresh
+argocd app wait helm-learning --sync --timeout 120
+kubectl -n helm-gitops-lab get configmap gitops-learning-greeting -o yaml
+```
+
+Automated sync is enabled here, so the first comparison can lead directly to deployment. The example disables automatic pruning while enabling self-healing. Inspect source revision, conditions, and object content if convergence fails; waiting does not repair a denied project or inaccessible repository.
+
+Argo CD owns the objects. Do not use `helm upgrade`, `helm rollback`, or `helm uninstall` to manage this Application. Change the watched Application values/chart source through its actual owner. The `releaseName` is rendering context, not proof of a Helm release stored in Helm history.
+
+Changing a release name can rename resources and interact with tracking labels/selectors in real charts. Keep Application names, release names, and selector behavior deliberate. For values precedence and Helm hook mapping, consult the installed Argo CD version's integration reference rather than assuming CLI lifecycle behavior is reproduced exactly.
+
+## Continue and clean up through the owner
+
+If the Application is later managed by a parent, edit its declaration in the parent's source. A new chart source change can sync automatically; a values edit in a locally held bootstrap file does nothing until its declared owner applies it.
+
+This Application has no cascading finalizer. Retire its owner before deleting the Application and then cleaning up the disposable ConfigMap/namespace. Review [drift and deletion](/docs/infrastructure/gitops/argocd/examples/drift-and-deletion) before enabling pruning or adding a finalizer.

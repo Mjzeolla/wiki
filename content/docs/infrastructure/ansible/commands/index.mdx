@@ -1,0 +1,22 @@
+---
+title: 'Ansible Command Reference'
+description: 'Select inventory, validation, execution, and targeting commands by their evidence and side effects.'
+tags:
+  - ansible
+  - commands
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/cli/ansible-playbook.html
+  - https://docs.ansible.com/projects/ansible/latest/cli/ansible-inventory.html
+---
+
+The CLI and a repository wrapper are different interfaces. `make ansible-apply` exists only if that
+project defines it. The generic tool is `ansible-playbook` with explicit configuration, inventory,
+source, and access settings.
+
+- [Inventory and validation](/docs/infrastructure/ansible/commands/inventory-and-validation) establish what will run and where.
+- [Execution and targeting](/docs/infrastructure/ansible/commands/execution-and-targeting) explain check mode, apply, limits, tags, and serial operations.
+
+Use `ansible-playbook --help`, `ansible-inventory --help`, and `ansible-doc MODULE_NAME` for the
+installed command/module interface. The examples below require a real project or the linked local
+lab; they do not create remote infrastructure by themselves.

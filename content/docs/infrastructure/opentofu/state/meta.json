@@ -1,0 +1,4 @@
+{
+  "title": "OpenTofu State",
+  "pages": ["index", "identity-and-drift", "backends-and-locking", "security-and-recovery"]
+}

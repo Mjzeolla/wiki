@@ -1,0 +1,46 @@
+---
+title: 'CloudNativePG'
+description: 'Understand the PostgreSQL operator and distinguish operator installation, database declarations, and application access.'
+tags: ['postgresql', 'cloudnative-pg', 'operators']
+status: 'growing'
+sources:
+  [
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/quickstart.md',
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/storage.md',
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/service_management.md',
+  ]
+---
+
+## What is CloudNativePG?
+
+CloudNativePG is a Kubernetes operator for PostgreSQL. It watches `postgresql.cnpg.io` resources such as `Cluster` and reconciles PostgreSQL instances, associated storage claims, service endpoints, and supported database operations. Installing the operator does not create every application's database automatically.
+
+```text
+Argo CD installs the CloudNativePG operator
+  -> a separate declaration creates Cluster/learning-db
+  -> the operator manages PostgreSQL Pods and PVCs
+  -> the storage integration provisions the requested volumes
+  -> the operator maintains Services for database access
+  -> applications connect with reviewed credentials and permissions
+```
+
+The CloudNativePG `Cluster` kind means a PostgreSQL cluster, not a new Kubernetes cluster. Its instance count describes database instances. A single instance has no database replica available for failover. The [quickstart](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/quickstart.md) shows the distinction between installation and database creation.
+
+## Name the responsible layer
+
+| Layer                             | Owns                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| Argo CD                           | Desired operator/chart and database custom-resource declarations                |
+| CloudNativePG                     | PostgreSQL runtime reconciliation and configured database operations            |
+| CSI driver and storage backend    | Volume provisioning, mounting, and underlying persistence                       |
+| Application                       | SQL migrations, schemas, query behavior, authorization needs, and compatibility |
+| Backup configuration and operator | Only the backup/recovery capabilities explicitly configured and tested          |
+
+CloudNativePG manages database Pods/PVCs directly rather than requiring you to maintain a database StatefulSet. Replicas use separate data directories and replicate through PostgreSQL; never mount the same `PGDATA` directory into multiple instances. See [storage](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/storage.md).
+
+## Use the operator's Services
+
+For a Cluster named `learning-db`, default Services include `learning-db-rw` for the primary and `learning-db-ro` for replicas where available. Applications should use the appropriate stable Service rather than an instance Pod IP. A read-only Service is not useful read capacity without a ready replica. See [service management](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/service_management.md).
+
+- [Cluster example](/docs/data/databases/relational/postgresql/cloudnative-pg/cluster-example): Read a complete minimal database resource and understand each field.
+- [Operations](/docs/data/databases/relational/postgresql/cloudnative-pg/operations): Storage, availability, credentials, upgrades, and backup boundaries.

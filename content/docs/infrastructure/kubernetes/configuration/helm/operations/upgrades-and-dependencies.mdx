@@ -1,0 +1,37 @@
+---
+title: 'Chart Upgrades and Dependencies'
+description: 'Review versioned inputs, dependency locks, hooks, CRDs, and recovery before changing a release.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/helm/helm_upgrade/',
+    'https://helm.sh/docs/helm/helm_dependency_build/',
+    'https://helm.sh/docs/topics/charts_hooks/',
+    'https://helm.sh/docs/chart_best_practices/custom_resource_definitions/',
+  ]
+---
+
+## Treat upgrades as compatibility changes
+
+Record the current chart artifact, values, image references, destination, and owner. Review both chart and application release notes. Render the proposed version with explicit reviewed inputs, compare the resulting resource identities and specs, and verify application/data compatibility.
+
+A chart version bump can change defaults even when your override file is unchanged. A rollback can restore an older manifest without reversing a schema migration or restoring deleted data. Backups and restore drills are separate evidence.
+
+For Helm-owned releases, understand the installed version's value-reuse/reset flags before upgrading. For Argo CD-owned charts, update the selected chart/Git revision and values at their watched source. Avoid introducing a competing Helm release to repair a GitOps-owned workload.
+
+## Resolve dependencies deliberately
+
+`Chart.yaml` can declare dependencies. `helm dependency update ./chart` resolves them and can update the lockfile. `helm dependency build ./chart` reconstructs dependencies from an existing lockfile; without one, its behavior can involve resolving dependencies instead. Review and commit the intended dependency contract rather than treating every build as a new version-selection step.
+
+The [learning chart](/docs/infrastructure/kubernetes/configuration/helm/examples/first-chart) deliberately has no dependencies. For a real chart, inspect packaged dependencies and their values scopes as well as the parent. See [dependency commands](https://helm.sh/docs/helm/helm_dependency_build/).
+
+## Hooks and CRDs have special lifecycle behavior
+
+Hook resources participate in Helm lifecycle events rather than behaving identically to ordinary manifests. Cleanup policies and failed hook behavior need review. Under Argo CD, supported Helm hooks are mapped into Argo CD operations, so test the actual integration instead of assuming a standalone install tutorial proves GitOps behavior.
+
+Helm treats CRDs under `crds/` specially; do not expect ordinary release upgrade or rollback behavior to provide a complete CRD migration strategy. Identify who upgrades schemas, the impact on existing custom resources, and the consequences of deleting a CRD. See [hooks](https://helm.sh/docs/topics/charts_hooks/) and [CRD practices](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
+
+## Verify the result
+
+For a real controller chart, verify its pods/webhooks, established CRDs, custom-resource reconciliation, and consuming workloads. For a stateful application, include data integrity, backup jobs, and recovery compatibility. Successful rendering or an operation marked complete does not establish all of those outcomes.

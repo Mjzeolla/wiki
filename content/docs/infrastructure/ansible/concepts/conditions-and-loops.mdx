@@ -1,0 +1,44 @@
+---
+title: 'Conditions and Loops'
+description: 'Select work deliberately and understand registered loop results.'
+tags: ['ansible', 'concepts']
+status: 'growing'
+sources:
+  [
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_conditionals.html',
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_loops.html',
+  ]
+---
+
+## Conditions select work per host
+
+`when` is a Jinja expression without `{{ }}`. Test a boolean as a boolean and convert strings deliberately when needed. A skipped task is not evidence that the desired state was established.
+
+```yaml
+- name: Report an optional feature
+  ansible.builtin.debug:
+    msg: Feature enabled
+  when: example_enabled | default(false) | bool
+```
+
+The default handles an absent setting; it does not validate an incorrectly typed value. Use assertions for required inputs rather than silently disabling required behavior. See [Ansible conditionals](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_conditionals.html).
+
+## Loops apply a task to a list
+
+```yaml
+- name: Report each configured listener
+  ansible.builtin.debug:
+    msg: '{{ listener.name }} uses port {{ listener.port }}'
+  loop:
+    - name: http
+      port: 8080
+    - name: metrics
+      port: 9090
+  loop_control:
+    loop_var: listener
+    label: '{{ listener.name }}'
+```
+
+A named loop variable avoids collisions with surrounding task files. Registering a loop yields a `results` list containing each iteration's result; it does not expose one universal `stdout` value. A loop's `when` is evaluated for each item.
+
+Use `until`, retries, and a delay for bounded polling. A fixed sleep adds delay without proving readiness. Review [loop semantics](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_loops.html) and run the [results example](/docs/infrastructure/ansible/examples/results-and-conditions).

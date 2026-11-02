@@ -1,0 +1,22 @@
+---
+title: 'OpenTofu Command Reference'
+description: 'Choose validation, planning, application, and inspection commands by their real effects.'
+tags:
+  - opentofu
+  - commands
+  - infrastructure
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/
+---
+
+Run commands from the intended root module unless a documented wrapper explicitly selects it.
+A repository's Make target is a project API, not an OpenTofu built-in. Read the target, working
+directory, selected environment, loaded credentials, and invoked CLI before using a copied command.
+
+- [Initialization and validation](/docs/infrastructure/opentofu/commands/initialization-and-validation) distinguish structural checks from authenticated planning.
+- [Planning and application](/docs/infrastructure/opentofu/commands/planning-and-application) explain saved artifacts, exit codes, and approval behavior.
+- [Inspection and outputs](/docs/infrastructure/opentofu/commands/inspection-and-outputs) explain what information is exposed and what it cannot prove.
+
+The [CLI reference](https://opentofu.org/docs/cli/commands/) and `tofu <command> -help` describe the installed tool's
+options. Check version-specific behavior when adopting a new backend, encryption method, or language feature.

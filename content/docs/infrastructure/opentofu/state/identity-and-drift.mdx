@@ -1,0 +1,56 @@
+---
+title: 'State, Identity, and Drift'
+description: 'Distinguish configuration addresses, remote objects, observed drift, and deliberate address migrations.'
+tags:
+  - opentofu
+  - state
+  - drift
+status: growing
+sources:
+  - https://opentofu.org/docs/language/state/
+  - https://opentofu.org/docs/language/meta-arguments/for_each/
+  - https://opentofu.org/docs/language/modules/develop/refactoring/
+---
+
+State records the association between configuration addresses and managed objects, together with
+attributes needed for planning. It is not merely a cache that can be deleted to make an error go away.
+Losing it can leave real infrastructure intact while losing the tool's ownership mapping.
+See [OpenTofu state](https://opentofu.org/docs/language/state/).
+
+Keep three identities separate:
+
+| Identity              | Example                                          | Meaning                                                             |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
+| Configuration address | `module.server["web-01"].some_resource.instance` | Position in the declared resource graph; illustrative provider type |
+| Remote object ID      | Provider-specific numeric ID or UUID             | Identity understood by the service API                              |
+| Human label           | `web-01`                                         | A displayed hostname/name that may not define either identity above |
+
+## Drift is evidence, not automatically a mistake
+
+An operator may change a VM manually, a provider may normalize a value, or an external process may
+delete an object. A normal plan can discover differences from recorded/desired state. Decide which
+system should own the value before restoring the declaration blindly.
+
+If a managed object was deleted and remains declared, planning may propose recreating it. That
+creates a replacement object; it does not recover its old disks, cluster membership, or database.
+If the goal is restoration, establish the data recovery path first.
+
+## Renaming code can change ownership addresses
+
+Keys used by `for_each` become part of addresses. A label change within a resource and a key change
+in its repeated block are not equivalent. A deliberate refactor may use a supported `moved` block
+to retain the association between old and new addresses; review the resulting plan and
+[module refactoring guidance](https://opentofu.org/docs/language/modules/develop/refactoring/) for the installed version.
+
+Do not use state removal as a generic fix. It can make OpenTofu stop managing a real object and
+cause a later plan to attempt creation of another. Import is an explicit adoption workflow, not a
+substitute for understanding why an object already exists.
+
+## Observe without publishing state
+
+`tofu state list` helps locate addresses; state inspection and outputs can expose infrastructure
+metadata or credentials. Keep diagnostic output scoped and protected. Never paste an entire state
+file into an issue to ask which resource failed.
+
+Use [planning commands](/docs/infrastructure/opentofu/commands/planning-and-application) to review behavior, and preserve
+[backend ownership](/docs/infrastructure/opentofu/state/backends-and-locking) while investigating errors.

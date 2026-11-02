@@ -1,0 +1,138 @@
+---
+title: Embedded C Development
+description: Cross-compilation, constrained resources, hardware access, interrupts, RTOS ownership, and ESP-IDF components.
+tags:
+  - c
+  - embedded-systems
+  - esp-idf
+  - freertos
+status: growing
+sources:
+  - https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/start-project.html
+  - https://docs.espressif.com/projects/esp-idf/en/v5.4.2/esp32s3/api-guides/build-system.html
+  - https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/02-Queues-mutexes-and-semaphores/01-Queues
+---
+
+Embedded C uses the same language as hosted C, but the environment changes the engineering model.
+Firmware often has fixed memory, persistent hardware state, real-time deadlines, interrupts, DMA,
+and no operating-system process boundary to recover from corruption.
+
+## Cross-compilation
+
+A cross-compiler runs on the development machine and produces code for a different target. An
+ESP32-S3 project uses an Xtensa compiler rather than the Mac or Linux host compiler.
+
+The compiler selection affects more than machine instructions. It supplies target-specific built-in
+macros, integer properties, ABI rules, system headers, and include search paths. Editor analysis must
+use the target compiler or an accurate compilation database; otherwise conditional headers may be
+parsed as host code.
+
+## Hardware and memory
+
+Hardware drivers commonly expose opaque handles and asynchronous transfers. Treat each peripheral as
+a resource with a lifecycle:
+
+1. configure pins and clocks;
+2. create the bus or driver;
+3. create attached devices;
+4. start transfers or callbacks;
+5. stop users before teardown; and
+6. release in reverse ownership order when teardown is supported.
+
+DMA buffers may require alignment, internal memory, or a specific allocator. Ordinary `malloc` does
+not communicate those capabilities. Use the platform allocator and retain the buffer until the
+driver signals transfer completion.
+
+Avoid large stack allocations in small RTOS tasks. Account for the simultaneous peak of task stacks,
+queues, network buffers, graphics buffers, and driver state. A successful allocation during an idle
+prototype does not prove that the same allocation is safe under network and display load.
+
+## Tasks and queues
+
+An RTOS task is independently scheduled work, similar to a lightweight thread. A queue transfers
+fixed-size values between tasks or callbacks and can establish one owner for mutable state.
+
+A useful event-driven pattern is:
+
+```text
+button callback ─┐
+network task ────┼──▶ event queue ──▶ state-owning task ──▶ display
+timer callback ──┘
+```
+
+The state-owning task serializes transitions and hardware calls. Producers submit compact events
+instead of mutating shared state directly. Define queue capacity from permitted burst size and decide
+what happens when the queue is full; silent loss and indefinite blocking are both policy choices.
+
+## Interrupts and callbacks
+
+An interrupt service routine must finish quickly. It should acknowledge the device, capture minimal
+state, notify a task, and return. It must not perform blocking I/O, allocate unpredictably, or run a
+large renderer.
+
+FreeRTOS APIs with a `FromISR` suffix are designed for interrupt context. Use the return value that
+requests a scheduler yield when waking a higher-priority task. Confirm whether a driver callback runs
+in interrupt or task context before choosing an API; the callback's documentation owns that contract.
+
+## ESP-IDF project model
+
+ESP-IDF supplies the Xtensa toolchain, hardware drivers, FreeRTOS integration, CMake build system,
+configuration, flashing tools, logging, and a managed component registry.
+
+An ESP-IDF component is a small library boundary:
+
+```text
+components/example/
+├── CMakeLists.txt
+├── example.c
+└── include/
+    └── project/
+        └── example.h
+```
+
+The component registers its sources, public include directory, and dependencies:
+
+```cmake
+idf_component_register(
+    SRCS "example.c"
+    INCLUDE_DIRS "include"
+    REQUIRES logging
+    PRIV_REQUIRES esp_driver_gpio
+)
+```
+
+`REQUIRES` expresses dependencies needed by the component's public interface. `PRIV_REQUIRES`
+expresses dependencies used only by its implementation or required privately at link time. Keep
+vendor handles and driver types inside hardware adapters when higher layers can use a semantic API.
+
+External components are declared in `idf_component.yml` and resolved by the IDF Component Manager.
+Commit the manifest and generated dependency lock; leave downloaded managed component directories
+ignored and do not edit them directly.
+
+## Errors and logging
+
+ESP-IDF APIs commonly return `esp_err_t`. Reusable code should return failures so the caller can
+choose retry, fallback, degraded operation, or shutdown. `ESP_ERROR_CHECK` is suitable at a startup
+boundary only when continuing would violate application invariants.
+
+Use stable component tags and structured values in logs. Avoid logging secrets, provisioning tokens,
+network credentials, or private payloads. Logging from an interrupt may have different safety and
+latency constraints than logging from a task.
+
+## Build and flash loop
+
+The normal ESP-IDF loop is:
+
+```bash
+idf.py reconfigure
+idf.py build
+idf.py flash monitor
+```
+
+Reconfigure after changing component manifests, component build definitions, or target configuration.
+Build before flashing so compiler and linker failures remain separate from serial-port and hardware
+diagnostics.
+
+Hardware verification should proceed in narrow milestones: establish serial logging, initialize one
+peripheral, render or read a deterministic result, observe resource use, and only then add concurrent
+network or animation work.

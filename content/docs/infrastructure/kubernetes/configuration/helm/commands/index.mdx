@@ -1,0 +1,65 @@
+---
+title: 'Helm Command Reference'
+description: 'Choose local inspection and rendering or an explicit Helm-owned release operation.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/helm/helm_upgrade/',
+    'https://helm.sh/docs/topics/chart_repository/',
+    'https://helm.sh/docs/topics/registries/',
+  ]
+---
+
+## Inspect and render locally
+
+Use these commands with the [learning chart](/docs/infrastructure/kubernetes/configuration/helm/examples/first-chart):
+
+```bash
+helm version --short
+helm show chart ./charts/greeting
+helm show values ./charts/greeting
+helm lint ./charts/greeting
+helm template learning ./charts/greeting --namespace helm-lab -f values.staging.yaml
+helm package ./charts/greeting --destination .
+```
+
+These commands do not deploy this local, dependency-free chart. Dependency retrieval and remote chart inspection can access networks. Rendered objects and installed release inspection may expose secrets, so protect output appropriately.
+
+## Work with a conventional chart repository
+
+For a trusted repository you selected, the command shape is:
+
+```text
+helm repo add approved https://YOUR_REVIEWED_CHART_HOST/charts
+helm repo update approved
+helm search repo approved/CHART_NAME --versions
+helm show values approved/CHART_NAME --version REVIEWED_VERSION
+helm pull approved/CHART_NAME --version REVIEWED_VERSION
+```
+
+These are placeholders, not an existing chart to install. Repository aliases are local client configuration. Adding an alias does not install a workload or authorize Argo CD. OCI chart references use `oci://...` and registry authentication rather than a traditional repository alias/index workflow. See [chart repositories](https://helm.sh/docs/topics/chart_repository/) and [OCI registries](https://helm.sh/docs/topics/registries/).
+
+## Optional: manage a Helm-owned lab release
+
+Only use this path in a dedicated namespace when Argo CD does not manage these resources. Confirm context and obtain the namespace through your lab's approved procedure. The following commands perform cluster writes:
+
+```bash
+kubectl config current-context
+helm upgrade --install learning ./charts/greeting \
+  --namespace helm-lab -f values.staging.yaml
+```
+
+Inspect its stored values, manifest, status, and history:
+
+```bash
+helm list --namespace helm-lab
+helm status learning --namespace helm-lab
+helm get values learning --namespace helm-lab --all
+helm get manifest learning --namespace helm-lab
+helm history learning --namespace helm-lab
+```
+
+Change a non-secret input and run the upgrade again. Inspect history to find a real previous revision before selecting rollback; do not blindly assume revision 1 is an appropriate recovery target. `helm rollback learning REVISION --namespace helm-lab` changes resources. `helm uninstall learning --namespace helm-lab` removes the release according to its lifecycle and resource policies; review stateful consequences first.
+
+Under Argo CD, use Application inspection, source changes, and sync policy instead. See [upgrade behavior](https://helm.sh/docs/helm/helm_upgrade/) and [Argo CD commands](/docs/infrastructure/gitops/argocd/commands).

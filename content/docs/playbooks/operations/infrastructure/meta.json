@@ -1,0 +1,10 @@
+{
+  "title": "Infrastructure Playbooks",
+  "pages": [
+    "index",
+    "local-opentofu-lab",
+    "local-ansible-lab",
+    "review-infrastructure-change",
+    "bootstrap-handoffs"
+  ]
+}

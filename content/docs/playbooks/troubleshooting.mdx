@@ -28,3 +28,12 @@ identifying the cause.
 
 Link the final diagnosis to the knowledge page explaining the underlying behavior and to a dedicated
 recovery playbook when remediation is repeatable.
+
+## Infrastructure and GitOps diagnostics
+
+- [OpenTofu troubleshooting](/docs/infrastructure/opentofu/troubleshooting): backend, locks, resource ownership, and partial applies.
+- [Ansible troubleshooting](/docs/infrastructure/ansible/troubleshooting): host selection, access, precedence, handlers, and repeat-run changes.
+- [Argo CD troubleshooting](/docs/infrastructure/gitops/argocd/troubleshooting): source access, rendering, project admission, and runtime conditions.
+
+Use [GitOps recovery](/docs/playbooks/operations/gitops/rollback-and-recovery) when the selected remedy changes the deployed
+version; a diagnostic explanation is not authorization to remove state or data.

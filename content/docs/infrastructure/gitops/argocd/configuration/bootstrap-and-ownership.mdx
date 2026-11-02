@@ -1,0 +1,64 @@
+---
+title: 'Bootstrap and Ownership'
+description: 'Design the first installation, controller access, root/child graph, and recovery boundary explicitly.'
+tags:
+  - argo-cd
+  - bootstrap
+  - ownership
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/getting_started/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/
+---
+
+A GitOps controller cannot reconcile source before the controller and its access exist. Bootstrap
+creates that initial capability: install the pinned Argo CD components/CRDs, establish authorized
+cluster and repository access, and submit the first Applications.
+
+The [getting-started guide](https://argo-cd.readthedocs.io/en/stable/getting_started/) provides
+release-specific installation steps. For a real environment, select and review a concrete release;
+do not turn a mutable upstream “stable” URL into an unreviewed production upgrade mechanism.
+
+## Root and children are separate controllers' work
+
+A root Application can manage child Application declarations. Each child selects its own source,
+project, destination, and sync policy. Registering a child is not proof that its workload has finished
+rendering, synchronizing, or becoming healthy.
+
+```text
+Operator bootstrap
+  -> controller installation and access
+  -> root Application
+       -> controller child declarations
+       -> platform configuration child
+       -> application workload children
+```
+
+Treat root source as administrative. A contributor able to modify projects, cluster-scoped policy,
+or privileged child Applications can affect more than one product namespace. Keep product publishing
+permissions separate from the platform repository's administrative control.
+
+## Record ownership of each resource
+
+For the controller installation, repository credentials, root resources, CRDs, and ordinary workloads,
+state who applies them and which path/version is canonical. Avoid two mechanisms continuously writing
+the same objects. A one-time documented bootstrap apply can coexist with later GitOps ownership;
+unrecorded repeated manual applies create drift and confusing field ownership.
+
+## Bootstrap recovery is not data recovery
+
+Restoring Applications from Git can recreate desired declarations. It does not necessarily recover
+controller repository credentials, kubeconfig access, provider-side secrets, database data, or the
+volumes referenced by restored claims. Back up those boundaries independently.
+
+After a control-plane restore, verify source trust and destination permissions before allowing broad
+reconciliation. Inspect pruning/cascading behavior and stateful resource consequences first. Use
+[policies and ordering](/docs/infrastructure/gitops/argocd/configuration/policies-and-ordering) to understand what the controller
+may change once it resumes.
+
+## Walk through the declarations
+
+The [root and child example](/docs/infrastructure/gitops/argocd/examples/root-and-children) provides complete
+project and root manifests, a catalog Kustomization, ownership-transfer steps, and separate parent/child checks.
+Read [repository access](/docs/infrastructure/gitops/argocd/configuration/repository-access) for bootstrap identity boundaries.

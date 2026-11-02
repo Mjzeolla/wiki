@@ -1,0 +1,68 @@
+---
+title: 'Example: Results and Conditions'
+description: 'Run a harmless local playbook with facts, registered module results, a loop, and assertions.'
+tags: ['ansible', 'examples']
+status: 'growing'
+sources:
+  [
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_vars_facts.html',
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_loops.html',
+  ]
+---
+
+## Prepare and run
+
+Use an isolated temporary directory with Ansible installed, outside a production checkout. Create `site.yml`:
+
+```yaml
+- name: Understand local observations
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  become: false
+  vars:
+    ansible_python_interpreter: '{{ ansible_playbook_python }}'
+  tasks:
+    - name: Inspect this playbook
+      ansible.builtin.stat:
+        path: '{{ playbook_dir }}/site.yml'
+      register: example_file
+
+    - name: Verify the observed file
+      ansible.builtin.assert:
+        that:
+          - example_file.stat.exists
+          - example_file.stat.isreg
+
+    - name: Report the observed operating system
+      ansible.builtin.debug:
+        msg: '{{ ansible_facts.system }}'
+
+    - name: Report each non-secret label
+      ansible.builtin.debug:
+        msg: '{{ example_label }}'
+      loop: [alpha, beta]
+      loop_control:
+        loop_var: example_label
+      register: example_labels
+      when: example_file.stat.exists
+
+    - name: Verify loop result shape
+      ansible.builtin.assert:
+        that:
+          - example_labels.results | length == 2
+          - example_labels.results[0].msg == 'alpha'
+          - example_labels.results[1].msg == 'beta'
+```
+
+```bash
+ansible-playbook -i localhost, site.yml --syntax-check
+ansible-playbook -i localhost, site.yml
+ansible-playbook -i localhost, site.yml --check
+```
+
+The comma makes `localhost,` an inline inventory. The explicit local connection avoids SSH. Expect two labels, passing assertions, and `changed=0`; none of these tasks writes a configuration file. Both the real run and check mode should succeed because the chosen modules can inspect this existing local file and evaluate assertions.
+
+The gathered fact and registered result have different origins: `ansible_facts.system` came from setup; `example_file.stat` came from the `stat` module; `example_labels.results` contains one result per loop item. Changing the inspected path to an absent file should fail the first assertion before later tasks run.
+
+This proves only the selected modules' behavior. It does not mean arbitrary command, package, service, or template tasks work identically in check mode. Keep or remove the known temporary directory when finished.

@@ -1,0 +1,21 @@
+---
+title: 'Ansible Glossary'
+description: 'Definitions with links to Ansible concepts and examples.'
+tags: ['ansible', 'concepts']
+status: 'growing'
+---
+
+| Term              | Meaning                                                                             | Continue with                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Controller        | Machine running Ansible and loading the selected configuration                      | [Controller and connections](/docs/infrastructure/ansible/concepts/controller-and-connections)    |
+| Inventory         | Hosts, group membership, and associated connection/configuration values             | [Inventory and groups](/docs/infrastructure/ansible/configuration/inventory-and-groups)           |
+| Play              | Host selection and execution context for ordered tasks and roles                    | [Plays and roles](/docs/infrastructure/ansible/concepts/plays-tasks-and-roles)                    |
+| Module            | The action implementation invoked by a task                                         | [Plays and roles](/docs/infrastructure/ansible/concepts/plays-tasks-and-roles)                    |
+| Role              | A reusable concern with tasks and an explicit input interface                       | [Reusable role example](/docs/infrastructure/ansible/examples/reusable-role)                      |
+| Fact              | An observed host attribute gathered by Ansible or supplied through a fact mechanism | [Facts and results](/docs/infrastructure/ansible/concepts/facts-and-registered-results)           |
+| Registered result | A task's structured response stored for the current host during execution           | [Results example](/docs/infrastructure/ansible/examples/results-and-conditions)                   |
+| Handler           | A task scheduled by an explicit notification, usually from a changed task           | [Templates and handlers](/docs/infrastructure/ansible/concepts/templates-and-handlers)            |
+| Idempotency       | Reapplying the same desired state avoids unintended additional changes              | [Idempotency and check mode](/docs/infrastructure/ansible/concepts/idempotency-and-check-mode)    |
+| Check mode        | Prediction of supported task effects without normal convergence                     | [Idempotency and check mode](/docs/infrastructure/ansible/concepts/idempotency-and-check-mode)    |
+| Become            | Privilege escalation for selected execution                                         | [Controller and connections](/docs/infrastructure/ansible/concepts/controller-and-connections)    |
+| Vault             | Ansible's encrypted-at-rest representation, requiring authorized decryption         | [Vault and runtime secrets](/docs/infrastructure/ansible/configuration/vault-and-runtime-secrets) |

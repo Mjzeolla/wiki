@@ -1,0 +1,89 @@
+---
+title: Configuration, Storage, and Access
+description: Understand ConfigMaps, Secrets, persistent volumes, ServiceAccounts, and RBAC.
+tags:
+  - kubernetes
+  - k8s
+status: growing
+sources:
+  - https://kubernetes.io/docs/concepts/configuration/configmap/
+  - https://kubernetes.io/docs/concepts/configuration/secret/
+  - https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  - https://kubernetes.io/docs/concepts/storage/storage-classes/
+  - https://kubernetes.io/docs/concepts/security/service-accounts/
+  - https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+---
+
+Workloads need settings, sometimes durable data, and sometimes permission to call the cluster API.
+Kubernetes provides separate objects for each responsibility.
+
+## ConfigMap and Secret
+
+| Object    | Stores                                                               | Common consumption                     |
+| --------- | -------------------------------------------------------------------- | -------------------------------------- |
+| ConfigMap | Non-sensitive settings, such as a feature flag or configuration file | Environment variables or mounted files |
+| Secret    | Sensitive values, such as a password, token, or TLS key              | Environment variables or mounted files |
+
+Both separate configuration from the container image. References normally stay within the Pod's
+namespace. Environment variables are populated when the container starts; changing the object does
+not update an already-running process's environment. Mounted files can update eventually, but
+`subPath` mounts do not receive automatic updates. The application must also reload changed files.
+See [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/).
+
+Secret `data` uses base64 encoding, which is not encryption. `stringData` accepts plain strings
+when submitting a Secret. By default Kubernetes Secrets are stored unencrypted in etcd unless
+encryption at rest is configured. Restrict API access and protect backups; do not commit real Secret
+values to Git just because they are encoded. Permission to create Pods in a namespace can also
+allow indirect access to its Secrets through a workload.
+See [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/).
+
+## Volumes, PVs, PVCs, and StorageClasses
+
+| Concept                     | Meaning                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| Volume                      | Storage exposed to containers in a Pod                                                     |
+| `emptyDir`                  | Temporary storage tied to the Pod's lifetime; survives container restarts, not Pod removal |
+| PersistentVolume (PV)       | Cluster-scoped record representing provisioned storage                                     |
+| PersistentVolumeClaim (PVC) | Namespaced request for storage, including size and access requirements                     |
+| StorageClass                | Cluster-scoped provisioning policy identifying a provisioner and parameters                |
+
+A Pod mounts a PVC; the claim binds to a suitable PV, which represents actual storage. A provisioner
+can create the PV dynamically through a StorageClass. Persistent storage can outlive the Pod, but
+availability depends on the storage system. Reclaim policy affects what happens when a claim is
+released, so deleting a PVC can lead to deletion of underlying data. A volume is not a backup.
+See [persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/).
+
+Access modes describe supported mounting: `ReadWriteOnce` means read/write from one node, not
+necessarily one Pod; `ReadWriteMany` allows multiple nodes when the backend supports it.
+`ReadWriteOncePod` restricts read/write access to one Pod with supported CSI storage. Choose the
+StorageClass based on provisioning, access, performance, and topology needs rather than its name.
+See [StorageClasses](https://kubernetes.io/docs/concepts/storage/storage-classes/).
+
+## ServiceAccount and RBAC
+
+A **ServiceAccount** is a namespaced identity for processes such as a Pod calling the Kubernetes
+API. It does not itself grant broad permissions. A namespace has a `default` ServiceAccount;
+workloads can select a dedicated identity. Token mounting and API access should reflect what the
+application actually needs. See [ServiceAccounts](https://kubernetes.io/docs/concepts/security/service-accounts/).
+
+| RBAC object        | Responsibility                                                                   |
+| ------------------ | -------------------------------------------------------------------------------- |
+| Role               | Defines allowed API actions within a namespace                                   |
+| ClusterRole        | Defines reusable permissions, including permissions for cluster-scoped resources |
+| RoleBinding        | Grants a Role or ClusterRole's relevant permissions within a namespace           |
+| ClusterRoleBinding | Grants a ClusterRole's permissions across the cluster                            |
+
+A rule combines resources with verbs such as `get`, `list`, or `create`. A binding connects rules
+to users, groups, or ServiceAccounts. Binding a ClusterRole with a RoleBinding does not turn it
+into a cluster-wide grant. RBAC rules grant permissions additively rather than defining deny rules.
+See [RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
+
+## Putting the objects together
+
+For an example API, the Namespace scopes its objects, the Deployment maintains Pods, and the Service
+routes traffic to them. ConfigMaps supply ordinary settings and Secrets supply credentials. A PVC
+supplies durable storage only if the application needs it. A ServiceAccount plus RBAC supplies
+cluster API access only if the application needs that access.
+
+Continue with [Pods and workloads](/docs/infrastructure/kubernetes/pods-and-workloads), [networking](/docs/infrastructure/kubernetes/services-and-networking),
+and the [Kubernetes overview](/docs/infrastructure/kubernetes).

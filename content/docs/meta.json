@@ -1,4 +1,15 @@
 {
   "title": "Personal Wiki",
-  "pages": ["index", "knowledge", "playbooks", "notes", "glossary"]
+  "pages": [
+    "index",
+    "infrastructure",
+    "languages",
+    "development",
+    "data",
+    "networking",
+    "security",
+    "observability",
+    "architecture",
+    "playbooks"
+  ]
 }

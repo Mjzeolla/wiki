@@ -1,0 +1,45 @@
+---
+title: 'Values, Templates, and Validation'
+description: 'Understand merging, types, scope, and the distinction between templates and rendered YAML.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/chart_template_guide/values_files/',
+    'https://helm.sh/docs/chart_template_guide/functions_and_pipelines/',
+    'https://helm.sh/docs/topics/charts/',
+  ]
+---
+
+## Predict which value wins
+
+A chart supplies defaults through `values.yaml`. Values files passed with `-f` override defaults; when several files provide the same setting, later files take precedence. Command-line value overrides take precedence over those files. Nested maps merge, while lists generally replace rather than append. A chart's schema can reject an otherwise valid YAML value.
+
+```bash
+helm template learning ./charts/greeting \
+  -f values.staging.yaml \
+  --set-string message=from-command-line
+```
+
+For the [example chart](/docs/infrastructure/kubernetes/configuration/helm/examples/first-chart), the final message is `from-command-line`. Use `--set-string` when a string that looks numeric or boolean must retain its type. Prefer reviewed files for durable environment configuration. See [values files](https://helm.sh/docs/chart_template_guide/values_files/).
+
+## Templates are programs that emit YAML
+
+```text
+metadata:
+  name: {{ .Release.Name }}-greeting
+data:
+  message: {{ .Values.message | quote }}
+```
+
+`.Release.Name` comes from the rendering context; `.Values.message` comes from the merged inputs. The pipeline sends the value through `quote` so a string survives YAML interpretation. A file in `templates/` is not ordinary Kubernetes YAML until rendered. Do not send its unexpanded `{{ ... }}` expressions to `kubectl apply`.
+
+Helpers, conditions, loops, `toYaml`, and indentation functions let charts render more complex structures. Inspect the final result after changes: a valid template can still emit a wrong namespace, port, resource type, or value. See [template functions](https://helm.sh/docs/chart_template_guide/functions_and_pipelines/).
+
+## A value matters only if the chart consumes it
+
+If a chart expects `replicaCount`, adding `replicas` can do nothing unless validation rejects it. Discover inputs with the exact chart's defaults, schema, README, and template references. The example's `additionalProperties: false` deliberately catches misspelled top-level keys; not every published chart is that strict.
+
+Schemas check input constraints. Rendering checks template execution and output shape. Server-side validation checks the cluster's APIs and admission. Runtime verification checks whether the service actually works. No one layer substitutes for the others.
+
+Values files and rendered output can contain plaintext Secrets. Keep actual credentials out of command-line examples and protect any rendered artifacts. See [secrets and credentials](/docs/security/secrets).

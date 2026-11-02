@@ -1,0 +1,336 @@
+---
+title: Advanced C Development
+description: Advanced C semantics and engineering practices for safe, maintainable systems and firmware.
+tags:
+  - c
+  - systems-programming
+  - memory-safety
+  - concurrency
+status: growing
+sources:
+  - https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf
+  - https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+  - https://clang.llvm.org/docs/AddressSanitizer.html
+  - https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+  - https://wiki.sei.cmu.edu/confluence/display/c/SEI+CERT+C+Coding+Standard
+---
+
+Advanced C development is less about learning more syntax and more about making object lifetimes,
+ownership, representation, concurrency, and failure behavior explicit. The compiler can optimize
+only according to the language rules, so code that appears correct at the machine level may still
+have undefined behavior at the C level.
+
+## Reason from the abstract machine
+
+The C standard describes an abstract machine. A valid program must follow its rules for object
+lifetime, type, sequencing, and pointer use. The generated instructions are a consequence of those
+rules rather than the definition of correct behavior.
+
+Undefined behavior gives the implementation no requirements. Common sources include:
+
+- reading outside an array;
+- dereferencing a null, dangling, or incorrectly aligned pointer;
+- overflowing a signed integer;
+- shifting by a negative value or by at least the width of the promoted operand;
+- modifying an object more than once without the required sequencing; and
+- accessing shared non-atomic state through a data race.
+
+Compiler optimization often exposes a defect rather than creating it. Reproduce suspicious behavior
+with warnings, sanitizers, and multiple optimization levels before treating an optimizer as faulty.
+
+Implementation-defined behavior is different: the implementation chooses and documents a result,
+such as whether plain `char` is signed. Unspecified behavior permits one of several valid outcomes
+without requiring the implementation to document which one it chooses. Portable code must distinguish
+all three categories.
+
+## Object lifetime and pointer provenance
+
+A pointer is usable only while it designates a live object or a permitted position relative to that
+object. Preserving the numeric address does not extend the object's lifetime.
+
+```c
+const char *invalid_name(void)
+{
+    char name[16] = "companion";
+    return name; /* name stops existing when the function returns */
+}
+```
+
+The same lifetime problem appears when code stores a pointer to a temporary request, retains a stack
+buffer for asynchronous I/O, or uses memory after its owner has released it. Document every retained
+pointer and require the caller to provide a lifetime that covers the retention period.
+
+Use a representation that makes ownership visible:
+
+```c
+typedef struct {
+    uint8_t *data;
+    size_t length;
+    size_t capacity;
+} byte_buffer_t;
+
+bool byte_buffer_init(byte_buffer_t *buffer, size_t capacity);
+void byte_buffer_deinit(byte_buffer_t *buffer);
+```
+
+An initializer establishes the invariant and a matching deinitializer releases owned resources. A
+zeroed or moved-from value should have documented behavior. After teardown, reset handles and lengths
+when doing so makes accidental reuse fail predictably.
+
+## Representation, alignment, and aliasing
+
+Objects have size, alignment, and representation. Padding may exist between structure members and at
+the end of a structure. Therefore, do not use raw structure bytes as a wire protocol, persistent file
+format, cryptographic input, or stable equality check.
+
+Serialize fields explicitly:
+
+```c
+void encode_u32_be(uint8_t output[4], uint32_t value)
+{
+    output[0] = (uint8_t)(value >> 24);
+    output[1] = (uint8_t)(value >> 16);
+    output[2] = (uint8_t)(value >> 8);
+    output[3] = (uint8_t)value;
+}
+```
+
+Converting an arbitrary byte address to a wider pointer can violate alignment requirements. Reading
+stored bytes through an incompatible pointer type can also violate aliasing rules. Use `memcpy` to
+move between byte storage and typed objects when decoding native representations, then handle byte
+order separately.
+
+Character types may inspect any object's representation. This exception does not make arbitrary
+pointer casts safe. Avoid type-punning through pointer casts; use explicit conversion code or
+`memcpy`, and measure before introducing representation-dependent shortcuts.
+
+## Integer conversions and arithmetic
+
+Integer promotion and the usual arithmetic conversions happen before many operators execute. A small
+unsigned type may first become `int`, and a comparison between signed and unsigned operands may
+convert the signed operand to an unsigned type.
+
+Validate before converting:
+
+```c
+bool size_to_u16(size_t value, uint16_t *result)
+{
+    if (result == NULL || value > UINT16_MAX) {
+        return false;
+    }
+
+    *result = (uint16_t)value;
+    return true;
+}
+```
+
+For allocation sizes, check multiplication and addition before performing them:
+
+```c
+if (count != 0 && element_size > SIZE_MAX / count) {
+    return ERROR_TOO_LARGE;
+}
+size_t bytes = count * element_size;
+```
+
+Use unsigned arithmetic when modulo behavior is part of the algorithm. Do not use unsigned types
+merely to reject negative input; conversion can turn a negative value into a large positive value.
+
+## Qualifiers: `const`, `volatile`, and `restrict`
+
+`const` prevents modification through a particular access path. It does not guarantee that an object
+cannot change through another alias or execution context.
+
+`volatile` tells the compiler that accesses are observable and must occur according to volatile
+semantics. It is appropriate for some memory-mapped registers and objects changed by mechanisms the
+implementation defines. It does not make compound operations atomic, establish inter-thread ordering,
+or replace a mutex.
+
+`restrict` is a performance contract: during the relevant execution, the object accessed through a
+restricted pointer must not also be accessed through an incompatible alias. Violating that promise is
+undefined behavior. Add it only when the API can state and enforce the non-aliasing requirement.
+
+## Public API design
+
+Treat a header as a contract rather than a collection of convenient declarations. A durable C API
+normally defines:
+
+- valid input ranges and nullability;
+- ownership and lifetime of every pointer and handle;
+- whether callbacks run synchronously, from a task, or from interrupt context;
+- thread-safety and reentrancy guarantees;
+- error meanings and whether partial work can occur; and
+- initialization and shutdown ordering.
+
+Opaque types hide representation and reduce coupling:
+
+```c
+/* client.h */
+typedef struct client client_t;
+
+client_t *client_create(const client_options_t *options);
+void client_destroy(client_t *client);
+client_error_t client_send(client_t *client, const uint8_t *data, size_t length);
+```
+
+The source file owns the definition of `struct client`. Callers cannot allocate it by value or depend
+on its fields. This permits the implementation to change without recompiling code solely because the
+private layout changed, subject to the build and binary compatibility model.
+
+Prefer domain operations over exposing a dependency's handle. An interface such as
+`display_show_status()` preserves the option to replace a panel driver, while exposing a vendor panel
+handle spreads that dependency through the program.
+
+## Initialization, invariants, and cleanup
+
+Separate allocation from initialization when callers need static storage, but keep every state
+transition explicit. Functions should either establish their documented postcondition or leave the
+object in a documented recoverable state.
+
+A cleanup path is useful when acquisition is sequential:
+
+```c
+error_t session_open(session_t *session)
+{
+    error_t error = transport_open(&session->transport);
+    if (error != ERROR_OK) {
+        return error;
+    }
+
+    error = decoder_init(&session->decoder);
+    if (error != ERROR_OK) {
+        transport_close(&session->transport);
+        return error;
+    }
+
+    session->open = true;
+    return ERROR_OK;
+}
+```
+
+For longer functions, a single `cleanup` label can express reverse-order release without duplicating
+it. Track which resources were acquired, make cleanup tolerate partial initialization, and avoid jumps
+that obscure ownership transfers.
+
+## Callbacks and function pointers
+
+Callbacks are dependency injection in C. Pair the function pointer with caller-owned context so the
+callback does not depend on global mutable state:
+
+```c
+typedef void (*status_handler_t)(void *context, device_status_t status);
+
+typedef struct {
+    status_handler_t handler;
+    void *handler_context;
+} observer_t;
+```
+
+The registration API must define how long the context remains valid, whether callbacks may unregister
+themselves, which execution context invokes them, and whether invocation can overlap. If registration
+crosses a shared-library boundary, the ABI and calling convention are also part of the contract.
+
+## Macros and compile-time techniques
+
+Prefer functions for type checking, single evaluation, debugging, and namespacing. Use macros when the
+preprocessor capability itself is required, such as conditional compilation, stringification, source
+location capture, or compile-time generation.
+
+Parenthesize macro parameters and the complete result. Never evaluate an argument more than once:
+
+```c
+#define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+```
+
+This macro works only for an actual array in the same scope, not for a pointer. State such constraints
+beside the macro and consider compiler-assisted checks where portability permits them.
+
+Use `_Static_assert` to reject invalid build-time assumptions:
+
+```c
+_Static_assert(sizeof(uint32_t) == 4, "protocol requires a 32-bit uint32_t");
+```
+
+`_Generic` can select an expression based on type, but elaborate generic macros quickly become harder
+to diagnose than a family of explicitly named functions.
+
+## Concurrency and the memory model
+
+Two execution contexts create a data race when they access the same object concurrently, at least one
+access modifies it, and the accesses are not properly synchronized. A data race is undefined behavior.
+
+Use synchronization to encode ownership:
+
+- a mutex protects an invariant spanning one or more objects;
+- a queue transfers data or ownership between tasks;
+- a semaphore signals availability or completion;
+- an atomic supports narrowly defined lock-free state; and
+- an interrupt-safe primitive bridges interrupt and task context.
+
+C atomics from `<stdatomic.h>` describe ordering between threads, but platform and RTOS support varies.
+Sequential consistency is the easiest ordering to reason about. Weaker acquire, release, or relaxed
+orders require a written synchronization argument. `memory_order_relaxed` guarantees atomicity for
+that object but does not publish surrounding non-atomic state.
+
+Embedded code must also follow the platform's rules for interrupt masking, multicore execution, DMA
+coherency, and memory-mapped I/O. The ISO C memory model alone does not define those hardware effects.
+
+## Architecture for larger programs
+
+Organize code by responsibility and dependency direction:
+
+```text
+application policy
+       │
+       ▼
+domain state and events
+       │
+       ▼
+ports expressed as project-owned interfaces
+       │
+       ▼
+network, storage, display, and platform adapters
+```
+
+The application layer decides policy such as retrying enrollment or displaying an offline state. An
+adapter translates that request into ESP-IDF, POSIX, or vendor-library calls. Keep state ownership in
+one module or task where possible, and communicate through explicit commands and events.
+
+File-local `static` data is still global state within the process. Use it deliberately for immutable
+tables or a documented singleton, not as a shortcut around passing dependencies.
+
+## Defensive build and test workflow
+
+Enable a strong warning baseline and treat warnings as defects in project-owned code. Exact flags vary
+by compiler and target, but hosted development commonly starts with:
+
+```text
+-Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wformat=2
+```
+
+Add flags incrementally because third-party headers and embedded toolchains differ. Avoid disabling a
+warning globally when a narrow correction or boundary suppression is possible.
+
+On a supported host build, use complementary tools:
+
+- AddressSanitizer detects many out-of-bounds and use-after-free errors;
+- UndefinedBehaviorSanitizer detects selected undefined operations;
+- static analysis follows suspicious paths without executing the program;
+- fuzzing explores parsers and state machines with generated input; and
+- target tests verify timing, peripherals, DMA, and integration behavior that a host cannot model.
+
+Sanitizers find exercised failures; they do not prove safety. Keep protocol parsers and domain logic
+portable enough to run on the host, while isolating hardware access behind small adapters.
+
+## Review checklist
+
+- Are object lifetime and ownership valid on success, failure, timeout, and cancellation paths?
+- Are sizes checked before arithmetic, allocation, conversion, and indexing?
+- Does serialization avoid native padding, alignment, and byte-order assumptions?
+- Are public pointer, callback, threading, and error contracts documented?
+- Is every shared mutable object protected by one clear synchronization strategy?
+- Is `volatile` limited to its actual platform-defined purpose?
+- Do macros evaluate arguments once and state their type constraints?
+- Can pure logic run under warnings, sanitizers, static analysis, and host tests?
+- Are hardware and vendor dependencies contained behind project-owned interfaces?
+- Does each module expose the smallest API needed to preserve its invariants?

@@ -1,0 +1,105 @@
+---
+title: 'Example: Require an Owner Label'
+description: 'Write a complete validation policy and test accepted, rejected, and out-of-scope ConfigMaps locally.'
+tags: ['security', 'kyverno', 'policy']
+status: 'growing'
+sources:
+  [
+    'https://kyverno.io/docs/policy-types/cluster-policy/validate/',
+    'https://kyverno.io/docs/kyverno-cli/reference/kyverno_apply/',
+    'https://kyverno.io/docs/guides/testing-policies/',
+  ]
+---
+
+## Scope and prerequisites
+
+Use an installed, reviewed Kyverno CLI compatible with the policy API. Check `kyverno version`. This exercise uses `ClusterPolicy` syntax and was tested with CLI `1.18.2`. It reads local files and needs no cluster, namespace creation, image registry, or real credentials.
+
+Create these files in a disposable directory:
+
+```text
+kyverno-learning/
+├── policy.yaml
+├── good.yaml
+└── bad.yaml
+```
+
+Create `policy.yaml`:
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: learning-require-owner
+spec:
+  background: true
+  rules:
+    - name: check-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - ConfigMap
+              namespaces:
+                - kyverno-lab
+      validate:
+        failureAction: Enforce
+        message: ConfigMaps in the learning namespace need an owner label.
+        pattern:
+          metadata:
+            labels:
+              owner: '?*'
+```
+
+`match` selects ConfigMaps in exactly this namespace. The pattern requires a nonempty owner string. `failureAction` belongs to this validation rule; the message explains the failed requirement. The resource remains a synthetic example, not the platform's production policy. See [validation rules](https://kyverno.io/docs/policy-types/cluster-policy/validate/).
+
+Create `good.yaml`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: approved
+  namespace: kyverno-lab
+  labels:
+    owner: learning-team
+data:
+  message: hello
+```
+
+Create `bad.yaml`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rejected
+  namespace: kyverno-lab
+data:
+  message: hello
+```
+
+## Run the evaluation
+
+From the exercise directory:
+
+```bash
+kyverno apply policy.yaml --resource good.yaml
+kyverno apply policy.yaml --resource bad.yaml
+```
+
+Expect the first resource to pass `check-owner` and the second to fail. The failing invocation should return a nonzero exit status; do not treat it as an unexpected test failure or suppress it in CI. `kyverno apply` here means evaluate the local resource against the local policy, not install either file in Kubernetes. See [CLI apply](https://kyverno.io/docs/kyverno-cli/reference/kyverno_apply/).
+
+## Change one input at a time
+
+Add `metadata.labels.owner: learning-team` to the rejected resource and evaluate it again: it should pass. An empty owner string should still fail.
+
+Then move the resource to another namespace. The rule no longer evaluates that resource. In CLI `1.18.2`, the summary shows `pass: 0, fail: 0` for this case; that does not mean the resource satisfied the owner requirement. This distinction is important when a production policy uses namespace labels rather than explicit names.
+
+Try the same resource with another kind only if it is valid for that kind. Matching and schema validity are separate questions. The CLI exercise proves policy evaluation for selected fixtures; it does not prove that a real webhook is reachable, registered, or using this policy.
+
+## From local evidence to cluster evidence
+
+An authorized live lab would additionally install the policy, submit a matching valid and invalid resource through the API, and inspect the responses and reports. Server-side dry-run can exercise supported admission without persisting a resource, but only when the policy and namespace context already exist and webhooks support the request.
+
+Do not apply this example to a shared cluster as an unreviewed experiment. Keep or remove the known temporary directory when finished. Continue with [troubleshooting](/docs/security/policy/kyverno/troubleshooting) for the live verification boundaries.

@@ -1,0 +1,49 @@
+---
+title: 'Sync, Health, and Drift'
+description: 'Separate desired-state comparison, synchronization operations, resource health, and user-visible success.'
+tags:
+  - argo-cd
+  - reconciliation
+  - health
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/core_concepts/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+---
+
+Synchronization status compares desired rendered objects with the live cluster. Resource health
+assesses conditions using supported built-in or configured health logic. They answer different
+questions and can disagree without contradiction.
+
+| Observation                         | Interpretation                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `OutOfSync`, old pods healthy       | Live configuration differs, while the previous workload may still serve |
+| `Synced`, workload progressing      | Desired objects match but rollout is not complete                       |
+| `Synced`, workload degraded         | The desired declaration is present but its runtime condition is bad     |
+| App healthy, external request fails | Health checks do not cover every routing or business dependency         |
+
+A custom resource may need custom health logic. A controller being installed and its custom resource
+being admitted does not prove a separately managed application dependency is operational. Review
+[resource health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/) when relying on
+health to order work or declare success.
+
+## Drift has multiple possible owners
+
+Someone can edit live replicas, an admission controller can default/mutate an object, or another
+controller can own a field. Find the actual owner before broadening ignored differences or disabling
+self-heal. Hiding a difference makes the display quieter; it does not establish the correct value.
+
+Self-heal can restore watched desired state after direct edits. Automated sync and self-heal are
+related but separately configured; inspect the installed Application rather than assuming a GitOps
+label means every live edit is immediately reverted.
+
+## A revision is part of the evidence
+
+Always record which source revision was compared/applied. An old healthy deployment can remain while
+repository authentication blocks a new revision. A UI showing healthy resources does not prove the
+latest requested change has reached them.
+
+Verification should trace revision, rendered object, rollout, Service endpoints, client routing,
+and application behavior. For databases or migrations, include data integrity and compatibility.
+The [verification playbook](/docs/playbooks/operations/gitops/deploy-and-verify) turns that chain into checkpoints.

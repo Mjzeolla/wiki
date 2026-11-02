@@ -1,0 +1,55 @@
+---
+title: 'Kyverno'
+description: 'Understand Kubernetes-native policies and their role between desired configuration and admitted resources.'
+tags: ['security', 'kyverno', 'policy']
+status: 'growing'
+sources:
+  [
+    'https://kyverno.io/docs/introduction/',
+    'https://kyverno.io/docs/introduction/how-kyverno-works/',
+    'https://kyverno.io/docs/policy-types/cluster-policy/policy-settings/',
+    'https://kyverno.io/docs/guides/reports/',
+    'https://kyverno.io/docs/policy-types/cluster-policy/overview/',
+  ]
+---
+
+## What Kyverno does
+
+Kyverno is a Kubernetes policy engine. Its controllers evaluate declared policies against resource requests and, where configured, existing resources. Policy capabilities include validation, mutation, resource generation, and image verification. Installing Kyverno enables those capabilities; the policies you install determine which behavior is actually configured. See [the introduction](https://kyverno.io/docs/introduction/).
+
+For validation, the basic path is:
+
+```text
+Argo CD, kubectl, or another client requests a Kubernetes change
+  -> Kubernetes API server runs applicable admission processing
+  -> Kyverno evaluates matching policy rules
+  -> a failing enforced validation can reject the request
+  -> accepted objects are stored and Kubernetes controllers act on them
+```
+
+Kyverno is not an application deployment tool. Argo CD can install Kyverno and deliver policies, while Kyverno checks requests resulting from deployment. A successful Git commit or local render does not bypass admission. See [how it works](https://kyverno.io/docs/introduction/how-kyverno-works/).
+
+## Policy, rule, scope, and action
+
+A policy contains rules. Each rule identifies matching resources and defines the validation or other action. A cluster-scoped policy can still select a narrow namespace or label scope; its Kubernetes scope alone does not mean it evaluates every object.
+
+For a requirement such as “ConfigMaps in the learning namespace must name an owner,” identify the ConfigMap kind, the learning namespace, the owner label, and the failure action separately. The [worked example](/docs/security/policy/kyverno/required-owner-example) supplies all files and expected results.
+
+## Audit, enforcement, and background scans
+
+Validation in Audit mode records violations without rejecting the request for that rule. Enforce can reject failing admission requests. Existing-resource handling and exceptions need explicit review; changing a mode is not proof that all preexisting objects became compliant.
+
+Background scans evaluate existing resources and produce report evidence where supported. They do not retroactively prevent an earlier creation or automatically repair a validation failure. Some rules depend on admission-only information and require compatible background settings. See [policy settings](https://kyverno.io/docs/policy-types/cluster-policy/policy-settings/) and [reports](https://kyverno.io/docs/guides/reports/).
+
+## Policies are versioned APIs
+
+The examples here use `kyverno.io/v1` `ClusterPolicy` to explain the API used by the Knotaru platform. Upstream documents deprecation beginning with Kyverno `1.19` and removal in `1.20`, with CEL-based policy types as the replacement. The exercise uses `1.18.2`; those lifecycle milestones must be considered when selecting an upgrade. Keep the policy API compatible with the installed engine and CRDs; plan migration as a separate tested change. Do not mechanically rename a kind or mix fields from different policy types.
+
+A chart version, controller application version, and policy API version identify different things. Record them separately when testing or upgrading. Read the [policy API overview](https://kyverno.io/docs/policy-types/cluster-policy/overview/) for its lifecycle.
+
+## What a policy does not prove
+
+A digest-shaped image reference does not prove an image is trusted or vulnerability-free. A readiness probe field does not prove it tests a meaningful dependency. An Enforce policy outside a resource's match scope does not constrain that resource. Test both accepted and rejected examples and verify the actual matched rule.
+
+- [Required-owner example](/docs/security/policy/kyverno/required-owner-example): Evaluate pass/fail resources locally.
+- [Troubleshooting](/docs/security/policy/kyverno/troubleshooting): Check matching, reports, admission responses, and controller health.

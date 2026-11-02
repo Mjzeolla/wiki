@@ -1,0 +1,59 @@
+---
+title: 'Plan and Apply OpenTofu Changes'
+description: 'Understand saved-plan review, detailed exit codes, approval semantics, and partial-failure handling.'
+tags:
+  - opentofu
+  - commands
+  - deployment
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/plan/
+  - https://opentofu.org/docs/cli/commands/apply/
+---
+
+From an initialized environment root with its actual inputs and credentials:
+
+```bash
+tofu plan -out=reviewed.tfplan
+tofu show reviewed.tfplan
+```
+
+Planning reads the provider/backend context and saves a proposed change. It does not create the
+planned VMs. Review creation, update, deletion, and replacement reasons, including unrelated drift.
+Treat the artifact as sensitive. See [plan options](https://opentofu.org/docs/cli/commands/plan/).
+
+## Apply the artifact you reviewed
+
+The following changes real resources for a real provider configuration:
+
+```bash
+tofu apply reviewed.tfplan
+```
+
+**Passing a saved plan counts as approval; this form does not present another interactive approval
+prompt.** Perform the human approval before the command. A repository wrapper may impose an
+additional confirmation variable, but that is wrapper behavior, not a built-in OpenTofu flag.
+See [apply semantics](https://opentofu.org/docs/cli/commands/apply/).
+
+Running `tofu apply` without a plan instead generates a new plan and normally requests approval.
+That is a different artifact/review flow. Do not assume a previously viewed terminal plan is the
+one a later unqualified apply will execute.
+
+## Interpret exit codes deliberately
+
+`tofu plan -detailed-exitcode` distinguishes success with no changes (0), an error (1), and a
+successful plan containing changes (2). CI must handle 2 intentionally rather than treating every
+nonzero result as a tool failure. Without that flag, these meanings differ; read the command contract.
+
+## Keep the review valid
+
+Do not modify code, variable sources, or the intended environment after review and reuse an old
+artifact casually. Fresh relevant context needs a fresh plan and review. Protect the plan's lifetime
+and selected backend. Planning against the wrong root can be internally consistent and still wrong.
+
+After a partial apply failure, inspect the first provider error and recorded/actual state before
+retrying. Some operations may already have succeeded. A retry is not a rollback. Reverting HCL can
+propose another set of operations, including destructive ones, rather than undoing the original change.
+
+Verify API resource state and guest/application behavior separately after apply. A created server
+can still be inaccessible or empty of its former data.

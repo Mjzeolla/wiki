@@ -1,0 +1,104 @@
+---
+title: 'Example: Separate Environment Overlays'
+description: 'Render staging and production from the same base while keeping destination and promotion explicit.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/helm/',
+  ]
+---
+
+## Reuse the lab base
+
+Keep `apps/config-demo/` from the first example as the base. Add these files:
+
+```text
+apps/
+├── config-demo/                     # existing ConfigMap and Kustomization
+└── environments/
+    ├── staging/kustomization.yaml
+    └── production/kustomization.yaml
+```
+
+Create `apps/environments/staging/kustomization.yaml`:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd-lab-staging
+resources:
+  - ../../config-demo
+patches:
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: greeting
+    patch: |-
+      - op: replace
+        path: /data/message
+        value: hello-from-staging
+```
+
+Create `apps/environments/production/kustomization.yaml`:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd-lab-production
+resources:
+  - ../../config-demo
+patches:
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: greeting
+    patch: |-
+      - op: replace
+        path: /data/message
+        value: hello-from-production
+```
+
+Render both locally:
+
+```bash
+kubectl kustomize apps/environments/staging
+kubectl kustomize apps/environments/production
+```
+
+Expect the same ConfigMap name, different explicit namespaces, and different message values. The namespace transformer does not create the Namespace object. See [Kustomize integration](https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/).
+
+## Declare a separate Application per environment
+
+For an authorized deployment, create separate child Applications selecting the staging and production paths, with distinct names and matching destinations. These fragments show only the differing fields; they are not standalone Application resources:
+
+```yaml
+metadata:
+  name: config-demo-staging
+spec:
+  source:
+    path: apps/environments/staging
+  destination:
+    namespace: argocd-lab-staging
+---
+metadata:
+  name: config-demo-production
+spec:
+  source:
+    path: apps/environments/production
+  destination:
+    namespace: argocd-lab-production
+```
+
+The earlier lab project allows only `argocd-lab`, so it intentionally denies these destinations. Before live deployment, define reviewed project boundaries and namespace ownership for both environments. Production and staging may use different projects, clusters, credentials, and approval policies.
+
+An explicit namespace rendered into an object is significant: changing an Application's default destination does not rewrite arbitrary namespaces already present in manifests. Compare rendered objects with permitted destinations, not just the Application's one destination field.
+
+## Translate the exercise to a real workload
+
+For an actual service, overlays can select replica counts, hostnames, resource limits, and an immutable image digest. CI builds/tests/publishes the artifact; a reviewed desired-state change selects it for staging and later production. The ConfigMap example only teaches rendering and environment identity.
+
+A ConfigMap update does not by itself guarantee a running process reloads configuration. Environment-variable consumers require recreation to see changed values; mounted-file and application reload behavior need their own design. Verify rollout and service behavior separately from manifest synchronization.
+
+Use [rendering and environments](/docs/infrastructure/gitops/argocd/configuration/rendering-and-environments) for Helm comparisons and [deploy and verify](/docs/playbooks/operations/gitops/deploy-and-verify) for actual service checks.

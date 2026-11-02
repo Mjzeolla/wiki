@@ -1,0 +1,36 @@
+---
+title: 'Troubleshoot Ansible'
+description: 'Identify inventory selection, access, precedence, module, handler, and repeat-run failures independently.'
+tags:
+  - ansible
+  - troubleshooting
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_error_handling.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html
+---
+
+Read the first failed host/task and distinguish source loading from remote execution. A later
+missing file can be a consequence of an earlier package or connection failure.
+
+| Symptom                             | Check first                                              | Common mistaken conclusion                     |
+| ----------------------------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| No hosts matched                    | Inventory source, group pattern, and limit intersection  | No errors means hosts were configured          |
+| Unreachable                         | Route, host key, account/key, and connection plugin      | Every unreachable report is an ICMP failure    |
+| Become failed                       | Actual sudo policy and chosen user                       | SSH success proves privileged execution        |
+| Unexpected variable                 | Source ownership and precedence in the real host context | Vault encryption gives a value higher priority |
+| Template changed, service unchanged | Notification name, change result, handler timing         | Handlers detect file changes automatically     |
+| Every run reports changed           | Module behavior, command idempotency, changing inputs    | YAML makes an operation idempotent             |
+| Preview differs from apply          | Module support and dependencies created during execution | Check mode is an approved saved plan           |
+
+Preserve host identity verification. When a machine was rebuilt, confirm the new key through a
+trusted channel; do not disable checking globally. Keep console access for SSH/firewall changes.
+
+For a variable problem, construct a minimal non-secret assertion rather than printing `hostvars`.
+For a handler problem, inspect the notifying task's result and the actual handler registration.
+For a failed convergence, determine what already changed before retrying or resuming.
+
+Use the complete [local lab](/docs/playbooks/operations/infrastructure/local-ansible-lab) to reproduce basic execution mechanics without
+remote hosts. Escalation evidence should name the command, intended host/group, failing task,
+non-sensitive error, and last known-good state; it should not include Vault passwords or full logs
+containing decrypted values.

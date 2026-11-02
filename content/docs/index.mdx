@@ -1,39 +1,56 @@
 ---
-title: Personal Wiki
-description: Technical learning, durable notes, reusable playbooks, and a personal glossary.
-tags:
-  - knowledge-management
-status: growing
+title: 'Personal Wiki'
+description: 'Technical subjects, practical examples, and repeatable playbooks.'
+tags: ['wiki']
+status: 'growing'
 ---
 
-This wiki turns things I learn into material I can find, trust, and reuse.
+Choose a subject to learn its concepts, explore examples, or find its terminology. For a task with a defined outcome, start with Playbooks.
 
 <Cards>
   <Card
-    title="Knowledge"
-    href="/docs/knowledge"
-    description="Curated explanations organized by subject."
+    title="Infrastructure"
+    href="/docs/infrastructure"
+    description="Provision machines, configure hosts, and run Kubernetes."
+  />
+  <Card
+    title="Languages"
+    href="/docs/languages"
+    description="Learn language concepts and practical patterns."
+  />
+  <Card
+    title="Development"
+    href="/docs/development"
+    description="Build, test, and maintain applications."
+  />
+  <Card title="Data" href="/docs/data" description="Understand databases and search systems." />
+  <Card
+    title="Networking"
+    href="/docs/networking"
+    description="Understand protocols and service communication."
+  />
+  <Card
+    title="Security"
+    href="/docs/security"
+    description="Protect secrets and define access boundaries."
+  />
+  <Card
+    title="Observability"
+    href="/docs/observability"
+    description="Explain behavior through metrics, logs, traces, and errors."
+  />
+  <Card
+    title="Architecture"
+    href="/docs/architecture"
+    description="Reason about system design and engineering tradeoffs."
   />
   <Card
     title="Playbooks"
     href="/docs/playbooks"
-    description="Repeatable procedures and operational checklists."
-  />
-  <Card
-    title="Notes"
-    href="/docs/notes"
-    description="Inbox, daily learning logs, and evergreen observations."
-  />
-  <Card
-    title="Glossary"
-    href="/docs/glossary"
-    description="Concise definitions with links to deeper material."
+    description="Follow repeatable setup, maintenance, and recovery procedures."
   />
 </Cards>
 
-## Capture workflow
+## How to use this wiki
 
-1. Capture an unfinished idea under [Notes → Inbox](/docs/notes/inbox).
-2. Refine chronological context in [Daily notes](/docs/notes/daily).
-3. Promote durable material into Knowledge, Playbooks, or the Glossary.
-4. Add sources and links so future revisions can distinguish evidence from memory.
+Start with a subject landing page, then follow its concepts and examples. Glossaries live beside the subjects they define. Generic knowledge stays here; repository documentation owns actual environments, configuration, deployment commands, and recovery procedures.

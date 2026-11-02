@@ -100,7 +100,7 @@ curl --fail http://127.0.0.1:8500/v1/health/service/learning-api
 
 Restart `python3 service.py`. After a successful check, the passing query should include it again.
 This demonstrates health filtering, not load balancing or proxying. Read
-[health and discovery](/docs/knowledge/platforms/consul/health-and-discovery) for the distinction.
+[health and discovery](/docs/infrastructure/service-discovery/consul/health-and-discovery) for the distinction.
 
 ## Cleanup and troubleshooting
 
@@ -119,5 +119,5 @@ Stop the service and agent with Ctrl+C. Development state is not a persistent cl
 | Connection refused on 8500                       | Development agent is still running and bound locally      |
 | Check never recovers                             | Service restarted on 8088 and responds 200 at `/health`   |
 
-Continue with the [Consul overview](/docs/knowledge/platforms/consul) and
+Continue with the [Consul overview](/docs/infrastructure/service-discovery/consul) and
 [official tutorials](https://developer.hashicorp.com/consul/tutorials).

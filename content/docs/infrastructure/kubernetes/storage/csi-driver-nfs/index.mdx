@@ -1,0 +1,49 @@
+---
+title: 'NFS CSI Driver'
+description: "Understand what csi-driver-nfs provides and what remains the storage server owner's responsibility."
+tags: ['kubernetes', 'storage', 'nfs', 'csi']
+status: 'growing'
+sources:
+  [
+    'https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md',
+    'https://kubernetes.io/docs/concepts/storage/persistent-volumes/',
+    'https://kubernetes.io/docs/concepts/storage/storage-classes/',
+  ]
+---
+
+## What is csi-driver-nfs?
+
+`csi-driver-nfs` is a Kubernetes storage integration implementing the Container Storage Interface (CSI) for NFS. It lets Kubernetes provision and mount volumes on an existing NFS server. It does not install that server, create a new physical storage system, or turn controller replicas into replicated data.
+
+For dynamic provisioning, the driver creates a subdirectory under the configured export for a volume. See the [driver parameters](https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md).
+
+```text
+Workload requests a PersistentVolumeClaim
+  -> its StorageClass selects nfs.csi.k8s.io and server/export settings
+  -> CSI provisioning establishes an NFS-backed volume
+  -> the claim binds to a PersistentVolume
+  -> CSI node components arrange the mount on the workload node
+  -> the container accesses its mounted directory
+```
+
+## Identify each resource
+
+| Component                   | Responsibility                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| NFS server                  | Stores files and owns export authorization, durability, capacity, and server availability |
+| CSI controller components   | Handle supported provisioning and volume lifecycle operations                             |
+| CSI node components         | Integrate volume mounting with Kubernetes nodes                                           |
+| StorageClass                | Defines the provisioner, backend parameters, mount options, and lifecycle defaults        |
+| PersistentVolumeClaim (PVC) | A namespaced workload request for storage                                                 |
+| PersistentVolume (PV)       | The cluster-scoped volume object bound to a claim                                         |
+
+A PVC is a request; a PV represents the allocated storage. A StorageClass tells Kubernetes how to provision volumes for requests. Read [persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) before diagnosing binding as if it were a container filesystem problem.
+
+## Provisioning is not isolation or recovery
+
+NFS can support shared mounts, but access modes do not establish application-level concurrency safety or tenant authorization. Unix ownership, export rules, server identity mapping, and application behavior still matter. A requested PVC size is not proof of a backend-enforced directory quota; verify the actual server/driver behavior.
+
+A retained volume is not an independent backup. Node rescheduling can still depend on the same server and network path. Test permissions, writes, persistence, expected failure behavior, and restoration separately.
+
+- [PVC example](/docs/infrastructure/kubernetes/storage/csi-driver-nfs/pvc-example): Read a complete storage class and claim, then inspect binding.
+- [Operations and troubleshooting](/docs/infrastructure/kubernetes/storage/csi-driver-nfs/operations): Separate provisioning, mounts, permissions, server health, and deletion behavior.

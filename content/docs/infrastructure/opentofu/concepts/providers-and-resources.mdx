@@ -1,0 +1,57 @@
+---
+title: 'Providers and Resource Lifecycle'
+description: 'Understand API boundaries, managed resources, data sources, and the limits of declarative convergence.'
+tags:
+  - opentofu
+  - providers
+  - infrastructure
+status: growing
+sources:
+  - https://opentofu.org/docs/language/providers/
+  - https://opentofu.org/docs/language/resources/behavior/
+  - https://opentofu.org/docs/language/data-sources/
+---
+
+A provider is a plugin implementing a supported API boundary. It supplies resource and data-source
+types and translates their operations into calls to a service. OpenTofu's core evaluates the
+configuration graph; provider behavior determines the details of reading, changing, and deleting
+particular objects.
+
+A managed resource declares an owned object's lifecycle. A data source reads information without
+claiming the same lifecycle ownership. Reading an existing network as data is different from
+importing that network into a managed resource. See
+[resource behavior](https://opentofu.org/docs/language/resources/behavior/) and [data sources](https://opentofu.org/docs/language/data-sources/).
+
+## Declaration versus configured provider
+
+A provider requirement identifies the source and accepted versions. A provider configuration
+supplies runtime settings such as an endpoint, region, or credential strategy. These are related
+but different concerns. Pin and review dependency selections; do not mistake a provider's display
+name for proof of its publisher or compatibility.
+
+Authentication for the backend can be separate from authentication for the provider. A successful
+backend initialization proves neither provider permissions nor the availability of a target VM template.
+Likewise, downloading a plugin proves neither that its configuration is correct nor that the remote
+API accepts the requested operation.
+
+## How an attribute change becomes an operation
+
+A provider schema and implementation determine whether a change can update an object in place or
+requires replacement. Renaming an address and changing an immutable remote attribute are distinct
+ways a plan may propose replacement. Read the plan's reason rather than guessing from the size of
+the HCL diff.
+
+Dependencies also influence ordering. A server referring to a network ID needs that network's value.
+An explicit `depends_on` can express behavior not visible through value references, but adding broad
+dependencies everywhere makes planning less precise and can defer more values until apply.
+
+## What provisioning does not prove
+
+An API can report that a VM was created while its guest is still booting, SSH is unavailable, or a
+service has failed. Provisioning is not host convergence, application readiness, or data recovery.
+Export the needed non-secret attributes, verify first-boot access, and hand off to
+[Ansible](/docs/infrastructure/ansible) or another explicitly owned configuration layer.
+
+Avoid introducing shell provisioners merely to hide that handoff. If a provisioner is necessary,
+document retries, failure behavior, secrets, and who owns drift afterward. A declarative-looking
+resource around an uncontrolled script does not automatically make the script idempotent.

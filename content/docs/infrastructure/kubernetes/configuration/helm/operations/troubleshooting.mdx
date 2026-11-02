@@ -1,0 +1,37 @@
+---
+title: 'Troubleshoot Helm Configuration'
+description: 'Identify values, template, admission, ownership, and runtime failures without bypassing the failing boundary.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/chart_template_guide/debugging/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/helm/',
+  ]
+---
+
+## Start at the first failing layer
+
+| Symptom                                       | Inspect                                                | Next step                                                               |
+| --------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Value has no effect                           | Exact chart defaults, schema, and template references  | Correct the input key/scope; do not assume different charts share names |
+| Input schema rejects a value                  | Merged values and expected type                        | Fix the source or intentionally evolve the schema                       |
+| Template evaluation fails                     | File/line, helper names, missing keys, and indentation | Reduce the failing input and render locally                             |
+| Render succeeds but API rejects objects       | Namespace, API/CRD availability, RBAC and admission    | Fix cluster prerequisites or manifests at their owner                   |
+| Objects exist but pods fail                   | Events, images, secrets, storage and application logs  | Diagnose runtime behavior separately from Helm syntax                   |
+| `helm list` does not show an Argo CD workload | Application source and owner                           | Inspect Argo CD rather than creating a new Helm release                 |
+| Changes repeatedly revert                     | Other controllers and desired-state owner              | Change the owning source instead of fighting reconciliation             |
+| Upgrade produces unexpected changes           | Previous values, new defaults, dependencies and hooks  | Compare exact inputs and rendered resources before retrying             |
+
+## Reproduce with the smallest render
+
+```bash
+helm lint ./charts/greeting
+helm template learning ./charts/greeting --namespace helm-lab -f values.staging.yaml
+```
+
+These commands match the lab chart. For a real incident, use its exact chart version, release name, namespace, values order, and capability assumptions. `--debug` can expose additional context and sensitive values; keep output local and redact evidence before sharing. See [template debugging](https://helm.sh/docs/chart_template_guide/debugging/).
+
+A client render cannot fully establish live API availability or admission results. Conversely, an unavailable repository does not prove a bad chart template. Record the selected source revision and first meaningful error before changing flags.
+
+For GitOps-owned charts, inspect the Application's conditions and rendered resources through [Argo CD troubleshooting](/docs/infrastructure/gitops/argocd/troubleshooting). Fix the declared source rather than applying a separate chart to the same resources.

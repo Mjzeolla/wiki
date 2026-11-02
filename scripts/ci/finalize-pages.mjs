@@ -2,7 +2,6 @@
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { basePath } from '../../src/config/hosting/index.mjs';
-import { documentationRedirects } from '../../src/config/redirects/index.mjs';
 
 const escape = (value) =>
   value
@@ -11,7 +10,8 @@ const escape = (value) =>
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
 
-const redirects = [{ source: '/', destination: '/docs' }, ...documentationRedirects];
+// The site entrypoint forwards to its documentation homepage.
+const redirects = [{ source: '/', destination: '/docs' }];
 for (const { source, destination } of redirects) {
   await access(join('out', destination, 'index.html'));
 

@@ -1,0 +1,12 @@
+---
+title: 'Ansible Examples'
+description: 'Run small local exercises before changing managed hosts.'
+tags: ['ansible', 'examples']
+status: 'growing'
+---
+
+These exercises use disposable local directories, synthetic values, and no sudo. They teach mechanics; they do not establish remote connectivity or production readiness. Use an isolated shell outside a production repository so its Ansible configuration is not accidentally selected.
+
+- [Variable precedence](/docs/infrastructure/ansible/examples/variable-precedence): Predict which value wins and verify command-line overrides.
+- [Results and conditions](/docs/infrastructure/ansible/examples/results-and-conditions): Inspect real module results, iterate, and assert an outcome.
+- [Build a reusable role](/docs/infrastructure/ansible/examples/reusable-role): Follow the complete template-and-handler lab and trace its interface.

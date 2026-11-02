@@ -1,0 +1,64 @@
+---
+title: 'Policies, Pruning, and Ordering'
+description: 'Understand automation controls, deletion paths, sync waves, hooks, and dependency readiness.'
+tags:
+  - argo-cd
+  - gitops
+  - operations
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/
+---
+
+Automation policies decide what the controller may do after comparing source and cluster state.
+Read the actual Application and installed CRD, not a generic assumption that every GitOps resource
+self-heals or prunes.
+
+| Concern            | Question                                                         |
+| ------------------ | ---------------------------------------------------------------- |
+| Automated sync     | Can a source change be applied without an operator sync request? |
+| Self-heal          | Should live divergence trigger restoration of desired state?     |
+| Pruning            | May resources removed from source be deleted during sync?        |
+| Empty application  | What happens if rendering yields no managed resources?           |
+| Cascading deletion | Does deleting the Application also delete its managed resources? |
+
+Pruning and deletion of the Application itself are distinct mechanisms. Disabling automated pruning
+does not prove every manual or cascading deletion path is blocked. Review finalizers, resource-level
+sync options, and project/operator permissions for stateful systems.
+See [automated sync](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/) and
+[Application deletion](https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/).
+
+## Waves order work within a sync operation
+
+`argocd.argoproj.io/sync-wave` groups resource application into ordered waves. Hooks introduce
+operation phases and lifecycle behavior. A negative wave number is an ordering choice, not a time
+delay or proof a dependency is ready.
+
+A wave on child Application declarations belongs to the parent's operation. The children manage
+separate resources and can reconcile independently. Do not assume “submit controller child first”
+means “its webhook, CRDs, secrets, and every custom resource are ready before another child runs.”
+Health customization and orchestration choices matter. See
+[sync waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/).
+
+## Retry is not dependency repair
+
+Retry/backoff can handle a transient race. Skipping dry-run for an as-yet-missing kind can help a
+first installation. Neither fixes a malformed custom resource, a denied project destination, an
+unsealed secret store, or incompatible storage permissions.
+
+For a database deployment, verify the controller, established CRD, provider identity, synchronized
+Secret, allocated volume, and database readiness. Then verify an authorized client can connect and
+that independent backup/recovery works. Put each checkpoint under its actual owner rather than
+replacing them with one optimistic wave annotation.
+
+When changing deletion policy, review the worst-case rendered diff and restore path. Retained storage
+and deletion confirmation are useful controls, not substitutes for an independently restorable backup.
+
+## Predict the result before changing policy
+
+The [drift and deletion exercise](/docs/infrastructure/gitops/argocd/examples/drift-and-deletion) uses disposable
+ConfigMaps to distinguish a live edit, deleted live resource, source removal, and Application deletion.
+It also shows why a parent-owned child's policy must change at its owning source.

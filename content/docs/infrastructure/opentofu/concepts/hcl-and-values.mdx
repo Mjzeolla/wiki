@@ -1,0 +1,77 @@
+---
+title: 'HCL and Values'
+description: 'Read blocks, typed inputs, locals, collection expressions, and explicit environment values.'
+tags:
+  - opentofu
+  - hcl
+  - configuration
+status: growing
+sources:
+  - https://opentofu.org/docs/language/syntax/configuration/
+  - https://opentofu.org/docs/language/values/variables/
+  - https://opentofu.org/docs/language/expressions/
+---
+
+HCL expresses configuration using blocks, arguments, and expressions. A block has a type, optional
+labels, and a body. An argument assigns a value to a name. Some bodies permit nested blocks whose
+meaning is defined by the language or a provider schema.
+
+This complete variable declaration accepts a map whose keys identify servers:
+
+```hcl
+variable "servers" {
+  type = map(object({
+    address = string
+    memory  = number
+  }))
+
+  validation {
+    condition     = alltrue([for server in values(var.servers) : server.memory >= 1024])
+    error_message = "Each server must request at least 1024 MiB."
+  }
+}
+```
+
+`map(object(...))` describes the shape, not the values. `var.servers` reads the input. A concrete
+`terraform.tfvars` can provide it:
+
+```hcl
+servers = {
+  web-01 = { address = "192.0.2.10", memory = 2048 }
+  web-02 = { address = "192.0.2.11", memory = 2048 }
+}
+```
+
+These are documentation addresses. This fragment defines data; it does not allocate addresses or
+create machines. Input validation catches a value outside this contract before a provider applies it.
+It cannot prove the address is unused or the provider has capacity.
+
+## Values move through explicit interfaces
+
+A root module can receive values from supported variable files, environment variables such as
+`TF_VAR_name`, and CLI arguments. Those sources have defined precedence; use the
+[input-variable documentation](https://opentofu.org/docs/language/values/variables/) when more than one sets the same input.
+Do not treat every file ending in `.hcl` as automatically loaded environment input. A backend
+configuration file is passed to initialization; it is not ordinary resource-variable input.
+
+A local names a derived expression within one module:
+
+```hcl
+locals {
+  addresses = { for name, server in var.servers : name => server.address }
+}
+```
+
+`local.addresses` is neither another root input nor a global shared with child modules. Changing its
+expression changes the derived value. A child receives it only when the caller passes an argument.
+
+## Collections and identity
+
+Maps are useful when stable keys have meaning. With `for_each = var.servers`, `each.key` is a key
+such as `web-01` and `each.value` is its object. These references exist in the corresponding repeated
+block; they are not global names. Learn how those keys become resource addresses in
+[state and identity](/docs/infrastructure/opentofu/state/identity-and-drift).
+
+When reading unfamiliar HCL, trace one value: declaration, supplied input, local transformation,
+module argument, child variable, resource attribute, then output. This is usually more productive
+than reading every file in filename order.

@@ -1,0 +1,44 @@
+---
+title: 'Inspect OpenTofu State and Outputs'
+description: 'Use targeted inspection while keeping sensitive values protected and live verification separate.'
+tags:
+  - opentofu
+  - commands
+  - state
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/output/
+  - https://opentofu.org/docs/cli/commands/state/list/
+  - https://opentofu.org/docs/cli/commands/show/
+---
+
+Inspection commands answer different questions. Choose the narrowest one that supplies the evidence
+you need, and keep output handling appropriate for the environment's sensitivity.
+
+| Command                     | Question answered                                                | Limit                                        |
+| --------------------------- | ---------------------------------------------------------------- | -------------------------------------------- |
+| `tofu state list`           | Which addresses are recorded here?                               | Not proof their remote objects are healthy   |
+| `tofu output`               | What root outputs are recorded?                                  | Display can redact sensitive outputs         |
+| `tofu output -json`         | What machine-readable outputs can an authorized reader retrieve? | Can expose sensitive values                  |
+| `tofu show reviewed.tfplan` | What does this saved plan describe?                              | Does not prove it was applied                |
+| `tofu show`                 | What is represented by the selected state?                       | Potentially sensitive infrastructure details |
+
+Read [output](https://opentofu.org/docs/cli/commands/output/) and [show](https://opentofu.org/docs/cli/commands/show/) before publishing
+machine-readable output to CI artifacts. JSON is an interchange format, not a redaction policy.
+
+## Handoff outputs are a contract
+
+An inventory generator can read a server-name/address output and produce Ansible inventory. Validate
+the resulting group membership, connection identities, and expected topology. Do not serialize the
+entire state when only a small reviewed output is needed.
+
+A recorded IP address does not prove the guest has finished booting or that its SSH key matches.
+Verify host identity and connectivity separately. Outputs also do not start the next tool: an
+explicit command/runner performs the handoff.
+
+## Avoid inspection disguised as repair
+
+State mutation commands have different consequences from read-only inspection. Removing a state
+entry relinquishes ownership without deleting the remote object; a later plan can attempt to
+create a conflicting one. Import and address moves require their own reviewed mapping change.
+Do not turn a diagnostic guide into an automatic state-repair script.

@@ -17,7 +17,7 @@ Pages is enabled and a deployment succeeds.
    workflow, which deploys its validated artifact. Alternatively, run **GitHub Pages** manually
    on `main` using the Actions tab.
 5. Open the deployment URL reported by the job. Verify search, a direct nested page load,
-   Markdown copy, and an old redirected URL.
+   Markdown copy, and the documentation homepage.
 
 The workflow never changes repository visibility or automatically enables Pages. No personal
 access token is needed: only the deployment job receives `pages: write` and `id-token: write`.
@@ -31,7 +31,7 @@ checks. The **GitHub Pages** workflow (`.github/workflows/pages.yml`) owns `page
 
 Before exporting, `pages-build` independently runs `pnpm run ci`: lint, Markdown checks, formatting,
 type checks, routes, and the normal production build. It then exports the static site and validates
-HTML assets/navigation, search JSON, Markdown indexes, and legacy redirect pages. This repeats the
+HTML assets/navigation, search JSON, Markdown indexes, and homepage forwarding. This repeats the
 validation gate so a manual Pages run cannot bypass it or depend on a CI run for a different commit.
 External-link checks remain a separate CI signal because network availability is not deterministic.
 
@@ -55,7 +55,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory /tmp/wiki-pages-preview
 
 Use a fresh preview directory if the symlink already exists. Open
 [the preview](http://localhost:8080/wiki/docs/). Stop the server with Ctrl+C when finished.
-The export contains all curated content, notes, static search data, and LLM text endpoints.
+The export contains all curated content, static search data, and LLM text endpoints.
 
 To test root hosting instead:
 
@@ -71,8 +71,8 @@ custom domain configured in Pages is reflected in the next build. Rebuild after 
 
 - Search downloads a generated index and searches in the browser; no live search server is needed.
 - Documentation, Open Graph images, and LLM/Markdown responses are generated during the build.
-- Next.js redirects become small HTML fallback pages with a link, meta refresh, and JavaScript
-  that preserves query parameters and fragments. These are not HTTP 301/308 responses.
+- The site root forwards to `/docs/` through an HTML fallback page with a link, meta refresh,
+  and JavaScript preserving query parameters and fragments. Retired documentation URLs have no redirects.
 - GitHub Pages serves `404.html` for unknown paths; there is no catch-all SPA rewrite.
 - The normal `pnpm build` still creates standalone server output. Use `pnpm start` only for that
   output, not for `out/`.
@@ -85,7 +85,6 @@ custom domain configured in Pages is reflected in the next build. Rebuild after 
 | Assets or navigation return 404 | Build-time base path matches the deployed domain/path; rebuild after a domain change          |
 | Search returns HTML             | `/api/search` must be the exported JSON file, without an added trailing slash                 |
 | Deploy waits or is rejected     | `github-pages` environment rules permit the selected branch and required reviews are complete |
-| Old URL does not move           | Its source/destination is in `src/config/redirects/index.mjs` and export validation passes    |
 
 To roll back content or application behavior, revert the relevant commit through the normal review
 process and deploy the new `main` build. For an urgent removal, use Pages settings to unpublish the

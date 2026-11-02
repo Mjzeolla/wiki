@@ -14,7 +14,7 @@ sources:
 Use this lab to see what the SDK captures before connecting a real project. The default configuration
 uses an in-browser transport that logs envelopes and **does not send them to Sentry**. The optional
 project step replaces that transport with normal delivery. Read the
-[Sentry overview](/docs/knowledge/platforms/sentry) for terminology.
+[Sentry overview](/docs/observability/errors/sentry) for terminology.
 
 ## Prerequisites
 
@@ -95,7 +95,7 @@ createRoot(document.getElementById('root')!, {
 
 These hooks apply to React 19. A boundary handles UI recovery; the root callbacks handle reporting.
 Avoid layering another reporting boundary without checking for duplicate events. Next.js owns its
-React root, so its integration uses [different hooks](/docs/knowledge/platforms/sentry/react-and-nextjs).
+React root, so its integration uses [different hooks](/docs/observability/errors/sentry/react-and-nextjs).
 
 Replace `src/App.tsx`:
 
@@ -163,7 +163,7 @@ the dev server starts. This switches the sample to normal network delivery. Trig
 handled error and locate it in Sentry's Issues view, filtering to environment `learning`. Check the
 message, tag, stack, and event ID. Do not use real user input for this exercise.
 
-For a production bundle, add [source-map uploads](/docs/knowledge/platforms/sentry/releases-and-data),
+For a production bundle, add [source-map uploads](/docs/observability/errors/sentry/releases-and-data),
 rebuild, serve the exact output with `npm run preview -- --host 127.0.0.1`, and verify original source
 lines in Sentry. An auth token belongs only in the build environment, never in a `VITE_` variable.
 

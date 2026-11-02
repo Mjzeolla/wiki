@@ -9,10 +9,10 @@ future revision rather than capturing every thought directly into permanent stru
 
 ## Content ownership
 
-- Put technology-specific knowledge under its language or platform owner.
+- Put technology-specific knowledge under its subject and technology owner.
 - Put repeatable procedures under `playbooks/`, not beside explanatory knowledge.
-- Use `notes/inbox/` for unfinished capture and promote mature material regularly.
-- Keep glossary entries concise and link to deeper knowledge pages.
+- Notes are not a published section; curate material under its subject before publishing.
+- Keep glossary entries concise, under their subject owner, and link to deeper pages.
 - Prefer focused concern directories over flat collections of unrelated pages.
 - Omit empty placeholder directories; create a concern when its first real page exists.
 

@@ -1,0 +1,66 @@
+---
+title: 'Example: Variable Precedence'
+description: 'Run a complete local experiment that compares inventory, play variables, and extra variables.'
+tags: ['ansible', 'examples']
+status: 'growing'
+sources:
+  [
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_variables.html',
+    'https://docs.ansible.com/projects/ansible/latest/reference_appendices/general_precedence.html',
+  ]
+---
+
+## Prepare an isolated lab
+
+Install Ansible and Python, then create a directory outside your repositories:
+
+```bash
+lab_dir="$(mktemp -d "${TMPDIR:-/tmp}/ansible-precedence.XXXXXX")"
+cd "$lab_dir"
+```
+
+Create `inventory.yml`:
+
+```yaml
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: '{{ ansible_playbook_python }}'
+      example_port: 8000
+```
+
+Create `site.yml`:
+
+```yaml
+- name: Observe variable precedence locally
+  hosts: all
+  gather_facts: false
+  become: false
+  vars:
+    example_port: 8080
+  tasks:
+    - name: Display the effective non-secret port
+      ansible.builtin.debug:
+        msg: 'Effective port: {{ example_port }}'
+    - name: Verify the expected value
+      ansible.builtin.assert:
+        that:
+          - example_port | int == expected_port | int
+```
+
+## Predict and run
+
+```bash
+ansible-playbook -i inventory.yml site.yml --syntax-check
+ansible-playbook -i inventory.yml site.yml -e expected_port=8080
+ansible-playbook -i inventory.yml site.yml -e expected_port=9090 -e example_port=9090
+```
+
+The first execution prints `8080`: the play variable overrides this inventory value. The second prints `9090`: extra variables override both. Both runs assert the result and report no changes. `expected_port` is deliberately separate so the assertion tests your prediction.
+
+Remove the play's `vars` mapping, then run with `-e expected_port=8000`; inventory now supplies the value. Put the mapping back afterward. A role default would be a lower-precedence fallback; do not infer the complete precedence ladder from only this example.
+
+For a deliberate failure, keep the play variable and run with `-e expected_port=8000`. The assertion should fail without modifying the host. Never substitute real credentials into a debug exercise. Remove the known temporary directory through your normal file manager when finished.
+
+Continue with [variable configuration](/docs/infrastructure/ansible/configuration/variables-and-precedence).

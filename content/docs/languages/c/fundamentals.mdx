@@ -1,0 +1,199 @@
+---
+title: C Fundamentals
+description: Core C types, storage, pointers, ownership, structures, enums, errors, and visibility.
+tags:
+  - c
+  - fundamentals
+status: growing
+sources:
+  - https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf
+---
+
+## Mental model
+
+A C compiler translates source into machine code. The language has functions, structures, enums,
+arrays, pointers, loops, and conditionals, but it does not provide classes, garbage collection,
+exceptions, modules, or a package manager as built-in language features.
+
+The programmer and supporting libraries decide:
+
+- where an object is stored;
+- how long it remains valid;
+- which code owns a resource;
+- whether multiple execution contexts may access it; and
+- how a failure reaches the caller.
+
+Undefined behavior is central to C's contract. An out-of-bounds access, use of an invalid pointer,
+signed integer overflow, or data race can invalidate assumptions made by the compiler. A program is
+not safe merely because one run produced the expected result.
+
+## Objects, types, and storage duration
+
+An object is a region of data storage with a type and lifetime. Common scalar types include
+integers, floating-point values, enumerations, and pointers. Use `<stdint.h>` types such as
+`uint16_t` when a hardware register, wire protocol, or file format requires an exact width.
+
+Local variables normally have automatic storage duration:
+
+```c
+int next_value(int current)
+{
+    int result = current + 1;
+    return result;
+}
+```
+
+`result` stops existing when the function returns. Returning its address would create an invalid
+pointer. File-scope objects and objects declared `static` have static storage duration and normally
+exist for the entire process or firmware lifetime.
+
+`const` prevents modification through that declaration:
+
+```c
+static const char *tag = "runtime";
+```
+
+The pointer may remain mutable here, while the characters it addresses are treated as constant.
+Read declarations from the name outward and use compiler warnings to catch accidental qualifier
+loss.
+
+## Pointers and ownership
+
+A pointer holds the address of an object. `&value` obtains an address and `*pointer` accesses the
+addressed object:
+
+```c
+void increment(int *value)
+{
+    if (value != NULL) {
+        *value += 1;
+    }
+}
+```
+
+The type system does not express resource ownership. Every pointer-based API therefore needs a
+clear contract:
+
+- Can the pointer be null?
+- Does the function only borrow it for the call?
+- May the function modify the object?
+- Does the callee retain the pointer after returning?
+- Who releases dynamically allocated memory?
+- How long must the pointed-to object remain alive?
+
+Use `const T *` for a borrowed value that the function only reads. Avoid storing a borrowed pointer
+unless the caller guarantees a sufficiently long lifetime.
+
+Dynamic allocation returns storage whose lifetime continues until it is released:
+
+```c
+uint8_t *buffer = malloc(size);
+if (buffer == NULL) {
+    return ERROR_NO_MEMORY;
+}
+
+/* use buffer */
+free(buffer);
+```
+
+Prefer one clear owner for each allocation. Define how partial initialization is cleaned up when a
+later operation fails.
+
+## Arrays and strings
+
+An array contains a fixed number of adjacent elements. In many expressions an array is converted to
+a pointer to its first element, so a function receiving a pointer cannot infer the array length:
+
+```c
+size_t sum(const int *values, size_t count);
+```
+
+Pass lengths explicitly and validate indices before access.
+
+A C string is an array of characters terminated by `\0`. Its storage must include the terminator.
+Functions that accept strings need a clear bound or a trusted termination guarantee. Do not treat
+arbitrary network or device bytes as a string without validating and terminating them.
+
+## Structures and enums
+
+A structure groups related fields:
+
+```c
+typedef struct {
+    event_type_t type;
+    device_state_t state;
+} device_event_t;
+```
+
+Designated initializers identify fields explicitly and remain readable when fields are reordered:
+
+```c
+const device_event_t event = {
+    .type = EVENT_SET_STATE,
+    .state = STATE_WORKING,
+};
+```
+
+An enumeration gives names to related integer constants:
+
+```c
+typedef enum {
+    STATE_OFFLINE = 0,
+    STATE_IDLE,
+    STATE_WORKING,
+    STATE_COUNT,
+} device_state_t;
+```
+
+Validate values received across storage, network, or device boundaries. C generally permits an enum
+object to contain a value that is not one of the named constants.
+
+## Visibility and `static`
+
+A normal file-scope function or object can be visible to the linker. Add `static` when a name belongs
+only to its source file:
+
+```c
+static bool state_is_valid(device_state_t state)
+{
+    return state >= STATE_OFFLINE && state < STATE_COUNT;
+}
+```
+
+Keep implementation helpers and mutable state file-local. Expose the smallest useful API through a
+header.
+
+## Errors and cleanup
+
+C has no language-level exceptions. Common APIs return a status code and provide results through a
+return value or output pointer:
+
+```c
+error_t initialize_display(void)
+{
+    error_t error = initialize_bus();
+    if (error != ERROR_OK) {
+        return error;
+    }
+
+    return initialize_panel();
+}
+```
+
+Handle expected failures at the layer that understands policy. A reusable library should normally
+return an error; an application startup boundary may decide the device cannot continue safely.
+
+When a function acquires several resources, release already-acquired resources on every failure
+path. A single cleanup label can be clearer than duplicating teardown logic, provided ownership
+changes remain explicit.
+
+## Practical review questions
+
+- Is every pointer valid for the entire period it is used?
+- Are array and string bounds explicit?
+- Does each allocation, handle, lock, and peripheral have an owner?
+- Are integer widths and conversions deliberate?
+- Can input create an unnamed enum value or invalid length?
+- Does every failure path preserve invariants and release owned resources?
+- Is shared mutable state synchronized?
+- Are compiler warnings enabled and treated seriously?

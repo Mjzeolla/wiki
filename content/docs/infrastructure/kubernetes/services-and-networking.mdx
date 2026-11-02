@@ -1,0 +1,66 @@
+---
+title: Services and Networking
+description: Understand stable service addresses, external routing, and network policy.
+tags:
+  - kubernetes
+  - k8s
+status: growing
+sources:
+  - https://kubernetes.io/docs/concepts/services-networking/service/
+  - https://kubernetes.io/docs/concepts/services-networking/ingress/
+  - https://kubernetes.io/docs/concepts/services-networking/gateway/
+  - https://kubernetes.io/docs/concepts/services-networking/network-policies/
+---
+
+A **Service** provides a stable way to reach an application despite Pods being replaced. A typical
+Service selects Pods by label, exposes a port, and forwards traffic to a target port. Its backing
+addresses are represented by EndpointSlices. A Service does not create Pods or start an application.
+
+## Common Service types
+
+| Type         | Purpose                                                              |
+| ------------ | -------------------------------------------------------------------- |
+| ClusterIP    | Stable virtual address for access inside the cluster; the default    |
+| NodePort     | Exposes a port on node addresses, subject to network reachability    |
+| LoadBalancer | Requests an external load balancer from an installed implementation  |
+| ExternalName | Returns a DNS alias to an external name rather than proxying traffic |
+
+A headless Service uses `clusterIP: None` to support direct endpoint discovery without a normal
+Service virtual IP. A LoadBalancer Service needs provider or cluster support; in a bare-metal
+cluster, the type alone does not provision a public address. `port` is the Service port and
+`targetPort` is the destination port. Declaring `containerPort` does not start a listener.
+See [Services](https://kubernetes.io/docs/concepts/services-networking/service/).
+
+## Ingress and Gateway API
+
+An **Ingress** describes HTTP/HTTPS routing to Services by host and path. An Ingress controller must
+implement those rules. Creating an Ingress does not install the controller, publish public DNS,
+or obtain a certificate automatically. The Ingress API is frozen; existing usage remains supported.
+See [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+
+**Gateway API** provides related resource types with separated responsibilities: GatewayClass
+identifies an implementation, Gateway defines listeners, and routes such as HTTPRoute describe
+how requests reach backends. It requires the relevant API definitions and a supporting controller.
+See [Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/).
+
+An illustrative HTTP path is:
+
+```text
+Client → routing controller → Service → ready Pod → application container
+```
+
+DNS, certificates, routing rules, Service selectors, and application ports must agree. A Service
+with no ready endpoints can fail even when the routing controller itself is healthy.
+
+## NetworkPolicy
+
+NetworkPolicy describes allowed traffic for selected Pods. It requires a network plugin that
+implements enforcement. Without applicable policies, Pods are generally non-isolated. Policies
+are additive: an allowed connection must satisfy applicable source egress and destination ingress
+rules. Namespaces alone do not enforce traffic isolation.
+
+A policy is different from API authorization: NetworkPolicy controls supported network traffic,
+while RBAC controls Kubernetes API actions. It is not a general HTTP authorization system.
+See [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+
+Continue with [labels and Namespaces](/docs/infrastructure/kubernetes/objects-and-namespaces) and [access controls](/docs/infrastructure/kubernetes/configuration-storage-and-access).

@@ -1,0 +1,51 @@
+---
+title: 'How Declarative Deployment Works'
+description: 'Follow desired state from a Git revision through rendering, comparison, application, and Kubernetes reconciliation.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/',
+  ]
+---
+
+## Begin with a concrete change
+
+Suppose the cluster has a ConfigMap containing `message: hello-from-git`. You want the value to become `hello-from-review`. With a direct `kubectl` workflow, you would send that mutation to Kubernetes. With this GitOps workflow, you change the watched source and let its controller reconcile the desired object.
+
+```text
+Git commit on the selected revision
+  -> repository server fetches source and renders manifests
+  -> application controller compares desired and live objects
+  -> manual or automated sync applies the approved differences
+  -> Kubernetes stores objects and its controllers act on them
+  -> status, health, and application checks provide evidence
+```
+
+The repository server handles source retrieval and manifest generation. The application controller performs comparison and reconciliation. The API server exposes Argo CD's management interface. These responsibilities explain why a repository/rendering error can happen before any workload object changes. See the [architecture](https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/).
+
+## There are two declarations
+
+The workload manifest says **what Kubernetes should contain**. The Argo CD Application says **where those manifests come from, where they belong, and which policy governs applying them**. Committing a Deployment without an Application or another owner that selects it does not register it for deployment.
+
+The Application is itself a Kubernetes custom resource. An administrator can submit it once, or a parent Application/ApplicationSet can maintain it. Its YAML can be versioned alongside the workload while still being a separate object with a separate lifecycle.
+
+## Walk one comparison
+
+| Step                            | Desired source                     | Live object         | Evidence                           |
+| ------------------------------- | ---------------------------------- | ------------------- | ---------------------------------- |
+| Before change                   | `hello-from-git`                   | `hello-from-git`    | Selected resource agrees           |
+| Local edit only                 | Remote still says `hello-from-git` | `hello-from-git`    | No remote desired-state change yet |
+| Commit reaches watched revision | `hello-from-review`                | `hello-from-git`    | Comparison can show a difference   |
+| Sync completes                  | `hello-from-review`                | `hello-from-review` | Object content converged           |
+
+Refresh asks Argo CD to compare again. Sync requests application of a desired revision. A refresh under an automated policy can lead to synchronization, so refreshing is not a promise that nothing will change. Read [sync and health](/docs/infrastructure/gitops/argocd/concepts/sync-health-and-drift) before interpreting the status.
+
+## Declarative does not mean automatic
+
+The first lab deliberately uses manual synchronization. Its desired state is still declarative: YAML defines the result and policy. Automation changes who initiates convergence, not whether the source is a declaration.
+
+A build pipeline remains responsible for producing and testing an image. Source and image credentials, release review, database migration compatibility, and operational recovery remain explicit responsibilities. Git can reconstruct declarations; it cannot reconstruct a database's contents from its Deployment manifest.
+
+Continue with the [first Application example](/docs/infrastructure/gitops/argocd/examples/first-application).

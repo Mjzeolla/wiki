@@ -1,6 +1,7 @@
 export const siteConfig = {
   name: 'Wiki',
-  description: 'A personal knowledge base for technical learning, durable notes, and playbooks.',
+  description:
+    'A personal knowledge base for technical subjects, practical examples, and playbooks.',
   repository: 'https://github.com/Mjzeolla/wiki',
   docsRoute: '/docs',
   docsContentRoute: '/llms.mdx/docs',

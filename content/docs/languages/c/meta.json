@@ -1,0 +1,10 @@
+{
+  "title": "C",
+  "pages": [
+    "index",
+    "fundamentals",
+    "compilation-and-headers",
+    "embedded-development",
+    "advanced-development"
+  ]
+}

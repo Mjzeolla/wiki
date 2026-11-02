@@ -1,0 +1,62 @@
+---
+title: 'Variables and Precedence'
+description: 'Trace role defaults, inventory values, explicit mappings, and overrides without leaking the resolved context.'
+tags:
+  - ansible
+  - variables
+  - configuration
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_variables.html
+  - https://docs.ansible.com/projects/ansible/latest/reference_appendices/general_precedence.html
+---
+
+Ansible resolves variables for each host from several sources. A variable's name and its source
+both matter; equal filenames do not create separate variable scopes. Establish a canonical owner
+for each setting rather than relying on accidental override order.
+
+A practical project often uses role defaults for reusable behavior, inventory/group variables for
+environment settings, protected Vault inputs for secret values, and explicit play/role parameters
+for the interface between them. This is a design convention; exact precedence follows Ansible's
+[variable rules](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_variables.html).
+
+## Trace an explicit mapping
+
+This fragment illustrates a role interface; it requires a role implementing these variables:
+
+```yaml
+- name: Configure application hosts
+  hosts: application
+  roles:
+    - role: web_service
+      web_service_port: '{{ application_http_port }}'
+      web_service_token: '{{ vault_application_token }}'
+```
+
+The environment owns `application_http_port`. The role owns its input names. The mapping makes
+that dependency visible and avoids forcing every caller to use an internal role-specific name.
+A `vault_` prefix is a naming convention, not an encryption operation.
+
+## Encryption does not change precedence
+
+Vault protects how a value is stored. After authorized decryption, it participates in normal
+variable resolution. Encrypting one variable does not make it override another source of the same
+name. Similarly, a higher-precedence override can change behavior even when the underlying role
+has a sensible default.
+
+Command-line options and variables are different categories. For example, connection-related
+variables can override settings that appear as CLI options; consult
+[general precedence](https://docs.ansible.com/projects/ansible/latest/reference_appendices/general_precedence.html)
+before assuming “the last-looking flag wins.” Avoid repeating the full precedence ladder from
+memory in project docs when the official reference is the maintained contract.
+
+## Discover group variables deliberately
+
+The inventory/playbook context influences where `group_vars` and `host_vars` are loaded. Two
+same-named group files in different discovered locations can both contribute. Read the effective
+configuration and run a non-secret assertion in the intended context rather than guessing from
+one file in isolation.
+
+For debugging, assert the expected type, required keys, ranges, and derived relationships. Keep
+secret-bearing tasks redacted and avoid using `debug: var=hostvars` in production. Namespacing role
+inputs and limiting override sources make later maintenance easier than increasingly broad dumps.

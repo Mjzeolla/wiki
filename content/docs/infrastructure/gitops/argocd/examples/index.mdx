@@ -1,0 +1,18 @@
+---
+title: 'Declarative Deployment Examples'
+description: 'Learn Argo CD through a small application, a parent graph, environment overlays, and controlled lifecycle changes.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources: ['https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/']
+---
+
+Follow these examples in order. They use a repository and disposable cluster you own, an existing Argo CD installation in `argocd`, and synthetic ConfigMap values. Read the assumptions before running write commands.
+
+1. [First declarative Application](/docs/infrastructure/gitops/argocd/examples/first-application): Create the complete source and permission contract, then observe manual synchronization.
+2. [Root and child Applications](/docs/infrastructure/gitops/argocd/examples/root-and-children): Move ownership of the Application declarations into Git and follow each reconciliation boundary.
+3. [Environment overlays](/docs/infrastructure/gitops/argocd/examples/environment-overlays): Render staging and production from the same base without sharing a destination.
+4. [Drift, pruning, and deletion](/docs/infrastructure/gitops/argocd/examples/drift-and-deletion): Predict what changes under each policy before trying it in the lab.
+
+Use [Application anatomy](/docs/infrastructure/gitops/argocd/configuration/application-anatomy) as the field reference and [the control loop](/docs/infrastructure/gitops/argocd/concepts/declarative-control-loop) as the conceptual explanation.
+
+The YAML can be parsed and rendered locally. Actual repository authentication, synchronization, drift repair, admission policy, and deletion need the authorized live lab; successful local validation does not establish those runtime results.

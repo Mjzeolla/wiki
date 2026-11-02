@@ -1,0 +1,22 @@
+---
+title: C
+description: Notes on C semantics, compilation, headers, memory, and embedded development.
+tags:
+  - c
+status: growing
+sources:
+  - https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf
+---
+
+C is a compiled systems language with explicit memory and resource management. It provides a small
+language core and leaves packaging, dependency resolution, concurrency, and most runtime behavior to
+the surrounding toolchain and platform.
+
+- [Fundamentals](/docs/languages/c/fundamentals): types, storage, pointers, ownership, structures, enums, errors, and
+  visibility.
+- [Compilation and headers](/docs/languages/c/compilation-and-headers): preprocessing, `#include`, declarations,
+  object files, linking, libraries, and build dependencies.
+- [Embedded development](/docs/languages/c/embedded-development): cross-compilation, constrained memory, hardware
+  APIs, interrupts, RTOS tasks, queues, and ESP-IDF components.
+- [Advanced development](/docs/languages/c/advanced-development): object lifetimes, representation, conversions,
+  API design, callbacks, macros, concurrency, architecture, and defensive tooling.

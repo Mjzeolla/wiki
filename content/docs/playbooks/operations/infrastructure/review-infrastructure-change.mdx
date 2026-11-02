@@ -1,0 +1,62 @@
+---
+title: 'Review and Apply an Infrastructure Change'
+description: 'Use distinct source, environment, plan, apply, and runtime checkpoints for real infrastructure operations.'
+tags:
+  - infrastructure
+  - operations
+  - playbooks
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/plan/
+  - https://opentofu.org/docs/cli/commands/apply/
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html
+---
+
+Use this procedure for an authorized real infrastructure change. It is a review framework; each
+repository must supply its actual root, inventory, provider, credentials, and recovery procedures.
+Do not interpret example filenames as a working production configuration.
+
+## 1. Establish target and ownership
+
+Record the intended environment, source revision, owning layer, before/after behavior, affected data,
+and rollback/recovery constraints. Verify private access and independent recovery material before
+changing hosts, cluster membership, storage, or secret delivery.
+
+If replacing a machine, decide whether its data must be restored or whether an empty replacement is
+acceptable. Recreating a VM is not equivalent to restoring its etcd membership or database data.
+
+## 2. Validate source and effective inputs
+
+For OpenTofu, check formatting and initialized schema validity, then validate concrete environment
+inputs without printing secrets. For Ansible, inspect membership, syntax, resolved assertions, and
+required connection/privilege access. Local CI success does not prove provider or host access.
+
+Use project wrappers only after reading their actual target selection and side effects. Keep state,
+saved plans, tokens, inventories with secrets, and kubeconfigs out of Git/review attachments.
+
+## 3. Review the operation appropriate to the tool
+
+For OpenTofu, generate and inspect a saved plan against the intended backend/provider. Review all
+resource operations, replacements, addresses, and drift. Protect the artifact and obtain approval
+before applying it: the saved-plan apply form does not ask again.
+
+For Ansible, run supported check/diff mode against the actual selected hosts and inspect exceptions.
+It is a prediction, not a saved artifact. Keep source/inputs stable through execution and understand
+which tasks may still execute in check mode.
+
+## 4. Execute within the agreed boundary
+
+Apply the reviewed OpenTofu plan or execute the approved playbook using the defined identity and
+window. Preserve the first error and identify partial changes if anything fails. Do not use state
+removal, blind lock removal, disabled SSH verification, or skipped validation to push through an
+unexplained failure.
+
+## 5. Verify independently
+
+Confirm provider objects, host access, service/cluster health, and affected application behavior.
+For stateful operations, confirm data integrity and fresh independent backups. For Ansible, investigate
+unexplained second-run changes. Export only the minimal outputs needed by the next layer.
+
+Record the revision/artifact, operator, result, verification evidence, and unresolved gaps without
+sensitive values. Reverting source is another desired-state change, not a guaranteed transaction undo.
+Use the [layer handoff procedure](/docs/playbooks/operations/infrastructure/bootstrap-handoffs) when the change spans several tools.

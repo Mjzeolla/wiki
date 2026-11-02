@@ -1,0 +1,82 @@
+---
+title: App of Apps Pattern
+description: Identify an app of apps by the Application resources it renders and understand parent, child, project, and sync ownership.
+tags: [argo-cd, gitops, app-of-apps]
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+---
+
+## Definition
+
+The **app of apps pattern** uses an Argo CD Application to manage the declarations of other Argo CD Applications. The parent renders child Application resources; each child independently reconciles its own selected source into its destination.
+
+```text
+Parent Application
+  -> renders and manages child Application declarations
+       -> child A renders its workload resources
+       -> child B renders its workload resources
+```
+
+The parent is an ordinary `kind: Application`. There is no `appOfApps: true` field or separate app-of-apps resource kind. The defining property is what the parent's source renders. See the [upstream pattern](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/#app-of-apps-pattern-alternative).
+
+## What makes an Application an app of apps?
+
+Consider this source fragment from a hypothetical root Application:
+
+```yaml
+spec:
+  project: platform-applications
+  source:
+    repoURL: https://github.com/YOUR_ACCOUNT/platform.git
+    targetRevision: main
+    path: catalog
+```
+
+The fragment alone does not prove the pattern. Inspect the output of `catalog`:
+
+| Rendered output                                      | App of apps?           | Reason                                                     |
+| ---------------------------------------------------- | ---------------------- | ---------------------------------------------------------- |
+| Deployment, Service, ConfigMap                       | No                     | The Application directly manages workload objects          |
+| Application/api and Application/worker               | Yes                    | The Application manages other Application declarations     |
+| AppProject objects only                              | No                     | Projects constrain Applications; they are not Applications |
+| Several unrelated Application files applied manually | No parent relationship | No Application is managing those declarations              |
+
+Names such as `root` or `platform-applications`, a shared Git repository, and automated sync do not establish the pattern. A parent can also manage supporting AppProjects or other permitted resources alongside its children.
+
+## The project is a separate permission boundary
+
+`spec.project` chooses the parent's AppProject. That project must permit the parent's source, destination, and rendered resource types. Each child names its own project; it does not inherit the parent's project simply because the parent created it.
+
+The Application's source chooses what to render; the AppProject constrains what it may deploy. Read [Application anatomy](/docs/infrastructure/gitops/argocd/configuration/application-anatomy) for the complete field contract.
+
+## Follow a change through the correct owner
+
+| Desired change                              | Owning source                             | Reconciliation to inspect                                     |
+| ------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| Add a child Application                     | Parent's catalog                          | Parent creates the declaration; then child starts reconciling |
+| Change a child's destination or sync policy | Child declaration in the parent's catalog | Parent updates the child spec; child uses its new settings    |
+| Change a workload image or configuration    | Child's selected workload source          | Child compares and applies the workload change                |
+
+Each Application has its own sync policy. An automated parent does not automatically enable automated sync for a manual child. A local file edit is not visible until the selected remote revision contains it.
+
+## Parent sync is not child workload readiness
+
+A parent sync can establish a child Application before the child's workload is ready. Sync waves on child declarations are part of the parent's operation; readiness across independent Applications requires explicit orchestration and appropriate health behavior. Consult [resource health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/) before using child health as a dependency barrier.
+
+The parent also does not recursively render each child's referenced Git path during its own Kustomize build. It renders the Application objects; the children select and render their own sources afterward.
+
+## Permissions and deletion follow the hierarchy
+
+Treat a catalog that manages projects or privileged child Applications as administrative source. It can change where children deploy and what permissions their projects grant.
+
+Pruning a child declaration and deleting that child's workloads are distinct lifecycle steps. Child finalizers and the deletion operation determine whether removal cascades. A parent can also restore a manually deleted child while its declaration remains desired state. Review [Application deletion](https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/) before retiring the hierarchy.
+
+An ApplicationSet is a different resource/controller mechanism that generates Applications from generators and a template. An app-of-apps parent manages rendered Application declarations through ordinary Application reconciliation. Both can produce Applications; their ownership mechanisms differ.
+
+## Work through the example
+
+The [root and child walkthrough](/docs/infrastructure/gitops/argocd/examples/root-and-children) provides complete manifests and local render commands. Render the parent's catalog and verify it contains child `kind: Application` objects. Then inspect the child source separately to see the workload objects it owns.

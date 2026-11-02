@@ -1,0 +1,11 @@
+{
+  "title": "Argo CD Configuration",
+  "pages": [
+    "index",
+    "rendering-and-environments",
+    "bootstrap-and-ownership",
+    "policies-and-ordering",
+    "application-anatomy",
+    "repository-access"
+  ]
+}

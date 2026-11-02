@@ -1,0 +1,4 @@
+{
+  "title": "Infrastructure",
+  "pages": ["index", "ansible", "opentofu", "kubernetes", "gitops", "service-discovery"]
+}

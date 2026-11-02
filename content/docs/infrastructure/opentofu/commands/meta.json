@@ -1,0 +1,9 @@
+{
+  "title": "OpenTofu Commands",
+  "pages": [
+    "index",
+    "initialization-and-validation",
+    "planning-and-application",
+    "inspection-and-outputs"
+  ]
+}

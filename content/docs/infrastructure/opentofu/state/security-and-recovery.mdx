@@ -1,0 +1,54 @@
+---
+title: 'Sensitive State and Recovery'
+description: 'Protect plans, outputs, credentials, and independent encryption recovery without confusing redaction with access control.'
+tags:
+  - opentofu
+  - security
+  - recovery
+status: growing
+sources:
+  - https://opentofu.org/docs/language/state/sensitive-data/
+  - https://opentofu.org/docs/language/state/encryption/
+  - https://opentofu.org/docs/cli/commands/plan/
+---
+
+Configuration secrets can flow into provider attributes, outputs, state, and saved plans. A value
+marked sensitive can be hidden in ordinary CLI output while still existing in artifacts read by
+an authorized process. Redaction is a presentation control, not a universal authorization boundary.
+See [sensitive state data](https://opentofu.org/docs/language/state/sensitive-data/).
+
+## Protect the artifacts, not just terminal output
+
+Use protected directories, narrowly scoped backend permissions, appropriate artifact retention,
+and independent credential recovery. Keep state, saved plans, decrypted variable files, and private
+keys out of Git. Rendered JSON and debug logs can reveal values hidden in normal terminal views.
+A reviewer does not need a raw state dump to understand a proposed resource replacement.
+
+Provider credentials and backend credentials may have different privileges and owners. Prefer
+short-lived mechanisms supported by the chosen services. Do not put a password in a shell argument
+merely because the destination file is ignored: process listings and shell history are separate paths.
+
+## Encryption needs a recovery design
+
+OpenTofu supports configured state/plan encryption, whose methods and migration behavior depend
+on the installed version. Review the
+[encryption documentation](https://opentofu.org/docs/language/state/encryption/) before introducing it to existing state.
+Do not copy a sample key or passphrase from a public guide into a real configuration.
+
+Decide where decryption material lives, how authorized operators obtain it, how it is rotated, and
+how it remains available after losing the original laptop or cluster. Backend server-side encryption
+and client-side encryption protect different boundaries; neither substitutes for tested restoration.
+
+## Recover ownership before applying changes
+
+Preserve the damaged/last-known state and backend object versions. Identify the exact environment
+and the resources it owned. Restore a known state version using the documented backend procedure,
+then compare it with actual provider objects in a controlled plan. An old state version can describe
+objects that have since changed, so restoration alone does not prove current consistency.
+
+Do not “recover” by starting a second local state file for the same infrastructure. It creates
+competing ownership and makes later cleanup dangerous. If the mapping genuinely needs repair,
+review explicit import or address migration operations one at a time.
+
+The [review/apply playbook](/docs/playbooks/operations/infrastructure/review-infrastructure-change) separates source checks, authenticated
+planning, approval, and live verification so these evidence boundaries stay visible.

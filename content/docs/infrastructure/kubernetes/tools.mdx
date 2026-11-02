@@ -1,0 +1,163 @@
+---
+title: Kubernetes Tools
+description: Use kubectl, Helm, Kustomize, and common helpers to inspect and manage Kubernetes.
+tags:
+  - kubernetes
+  - k8s
+  - tooling
+status: growing
+sources:
+  - https://kubernetes.io/docs/reference/kubectl/
+  - https://kubernetes.io/docs/reference/kubectl/quick-reference/
+  - https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+  - https://helm.sh/docs/topics/charts/
+  - https://k9scli.io/
+  - https://github.com/ahmetb/kubectx
+  - https://github.com/stern/stern
+  - https://fluxcd.io/flux/
+  - https://argo-cd.readthedocs.io/en/stable/
+  - https://kind.sigs.k8s.io/
+  - https://minikube.sigs.k8s.io/docs/
+---
+
+Start with **kubectl** to understand what is running and inspect Kubernetes objects. Add Helm when
+installing packaged applications, Kustomize when maintaining variations of manifests, and optional
+helpers when repeated inspection becomes cumbersome. These tools complement the
+[objects and Namespaces](/docs/infrastructure/kubernetes/objects-and-namespaces) they work with.
+
+## Tools at a glance
+
+| Tool             | What it does                                                   | When it helps                                             |
+| ---------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| kubectl          | Calls the Kubernetes API to inspect or change objects          | Everyday cluster interaction                              |
+| Helm             | Packages applications as charts and manages installed releases | Installing applications with configurable values          |
+| Kustomize        | Composes and patches YAML manifests                            | Sharing a base across environments                        |
+| K9s              | Interactive terminal interface for cluster resources           | Browsing Pods, events, and logs                           |
+| kubectx / kubens | Switch the active context or namespace                         | Working across clusters and environments                  |
+| Stern            | Tails logs from multiple matching Pods                         | Following an application's replicas                       |
+| Flux / Argo CD   | Reconcile declared application configuration through GitOps    | Continuous delivery from version-controlled configuration |
+| kind / minikube  | Run a local Kubernetes cluster                                 | Learning and testing away from a shared cluster           |
+
+## kubectl and kubeconfig
+
+`kubectl` is the standard Kubernetes CLI. Its general shape is
+`kubectl [command] [resource] [name] [flags]`. For example, `get` lists objects, `describe` explains
+one in more detail, and `logs` retrieves container logs. Available resources depend on the server
+and installed extensions. See the [kubectl reference](https://kubernetes.io/docs/reference/kubectl/).
+
+A **kubeconfig** holds cluster connection details, authentication configuration, and contexts.
+A **context** combines a cluster, identity, and optional default namespace. The usual configuration
+file is `~/.kube/config`; explicit flags or `KUBECONFIG` can select others. A context is client
+configuration, not a Kubernetes Namespace or a separate cluster object.
+
+Check the selected context before making changes. `--context` and `--namespace` make a command's
+target explicit without changing your default. Protect kubeconfig files because they can contain
+credentials or invoke authentication helpers. See
+[kubeconfig concepts](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/).
+
+## Common kubectl commands
+
+These examples are a command reference, not a deployment procedure. They assume `example-api`
+and `apps` exist; substitute your actual object names. The examples have not been run against a
+live cluster.
+
+Inspect your target and available resource types:
+
+```bash
+kubectl config current-context
+kubectl config get-contexts
+kubectl api-resources
+kubectl get namespaces
+```
+
+Inspect workloads and investigate failures:
+
+```bash
+kubectl get pods --namespace apps -o wide
+kubectl get deployments,services --namespace apps
+kubectl describe deployment example-api --namespace apps
+kubectl get events --namespace apps --sort-by=.metadata.creationTimestamp
+kubectl logs deployment/example-api --namespace apps --tail=100
+kubectl rollout status deployment/example-api --namespace apps
+```
+
+Deployment logs can select a Pod; they are not automatically a combined history of every replica.
+For a multi-container Pod, select its container with `-c`. For the previous terminated container
+instance in a Pod, use `kubectl logs POD_NAME --namespace apps -c CONTAINER_NAME --previous`.
+Events and container logs are diagnostic evidence, not durable audit or logging storage.
+
+Inspect a manifest before changing the cluster:
+
+```bash
+kubectl diff --namespace apps -f deployment.yaml
+```
+
+The following command writes the manifest's desired state to the selected cluster:
+
+```bash
+kubectl apply --namespace apps -f deployment.yaml
+```
+
+`diff` requires a real manifest and API access; exit code 1 means differences were found.
+`apply` acceptance does not mean a rollout is healthy. A manifest's explicit namespace must agree
+with your intended target. `kubectl get all` does not list every resource type: query Secrets,
+ConfigMaps, volume claims, and custom resources explicitly when needed.
+See the [kubectl quick reference](https://kubernetes.io/docs/reference/kubectl/quick-reference/).
+
+## Helm: charts, values, and releases
+
+A **chart** packages templates and related application files. **Values** supply configuration to
+those templates. A **release** is an installed instance of a chart; the same chart can produce
+separate releases with different names or settings. Helm helps install, upgrade, and manage these
+instances rather than replacing the Kubernetes API.
+
+Use `helm list --namespace apps` to list releases and
+`helm status RELEASE_NAME --namespace apps` to inspect one. Chart values are chart-specific;
+check the chart's documentation and version before copying settings. Rendered manifests can include
+Secrets, so treat rendered output as potentially sensitive. See [Helm charts](https://helm.sh/docs/topics/charts/).
+
+## Kustomize: bases and overlays
+
+Kustomize transforms ordinary manifests through a `kustomization.yaml`. A **base** contains shared
+resources; an **overlay** adds environment-specific changes. It does not require a separate
+placeholder template language. `kubectl kustomize PATH` renders a directory, while
+`kubectl apply -k PATH` applies the result and changes the cluster. Neither command makes Kustomize
+a continuously running controller.
+
+Helm and Kustomize solve different packaging and composition problems and can coexist. See
+[Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/).
+
+## Interactive helpers
+
+[K9s](https://k9scli.io/) makes resources, logs, and actions available in a terminal UI. It uses your
+cluster access; actions in the UI can change resources. It does not bypass RBAC.
+
+[kubectx and kubens](https://github.com/ahmetb/kubectx) shorten context and namespace switching.
+Those changes affect the defaults used by later commands, so verify the target after switching.
+[Stern](https://github.com/stern/stern) follows logs across matching Pods and containers and is useful
+when replicas are replaced. It complements a persistent log backend such as [Loki](/docs/observability/logs/loki).
+
+## GitOps controllers
+
+[Flux](https://fluxcd.io/flux/) and [Argo CD](/docs/infrastructure/gitops/argocd) reconcile
+application configuration from declared sources. They run in the cluster and can apply changes
+without a person executing kubectl each time. Their reconciliation and synchronization settings
+control when changes happen.
+
+For a GitOps-managed workload, an ad-hoc live edit can conflict with the declared source and be
+reverted. Change the owning configuration for lasting changes, and inspect controller status when
+Git and the cluster disagree. A Git commit alone does not prove that reconciliation succeeded.
+
+## Local learning clusters
+
+[kind](https://kind.sigs.k8s.io/) runs Kubernetes nodes in containers and is useful for isolated tests.
+[minikube](https://minikube.sigs.k8s.io/docs/) provides a local cluster with supported container or VM
+drivers. They create a Kubernetes environment; kubectl remains the usual way to interact with it.
+Local networking, storage, and load-balancer behavior can differ from a shared production cluster.
+
+Learn kubectl first, then add Helm or Kustomize for the configuration you actually maintain.
+Continue with [workloads](/docs/infrastructure/kubernetes/pods-and-workloads), [networking](/docs/infrastructure/kubernetes/services-and-networking), and
+[configuration and access](/docs/infrastructure/kubernetes/configuration-storage-and-access).
+
+For deeper configuration mechanics, read the [Helm and Kustomize guides](/docs/infrastructure/kubernetes/configuration).

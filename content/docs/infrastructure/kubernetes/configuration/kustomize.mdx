@@ -1,0 +1,57 @@
+---
+title: 'Kustomize Bases and Overlays'
+description: 'Compose ordinary manifests into environment-specific resources and inspect the actual rendered namespace and image.'
+tags:
+  - kubernetes
+  - kustomize
+  - configuration
+status: growing
+sources:
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+---
+
+Kustomize composes ordinary Kubernetes manifests through a `kustomization.yaml`. A base holds shared
+resources. An overlay references a base and adds environment-specific resources, transformations,
+and patches. It is a renderer/composer, not a continuously running deployment controller.
+
+```text
+apps/example-api/
+├── base/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── kustomization.yaml
+└── overlays/
+    ├── lab/kustomization.yaml
+    └── production/kustomization.yaml
+```
+
+A minimal base can list resources. An overlay may assign a namespace, set an immutable image digest,
+and patch resource requests or replicas. Those settings affect the output, so reading the base alone
+is not enough to understand production behavior.
+
+## Separate render, comparison, and application
+
+With a real directory matching this layout:
+
+```bash
+kubectl kustomize apps/example-api/overlays/lab
+```
+
+This renders without applying to a cluster. `kubectl diff -k ...` compares using the selected cluster
+and can return 1 for a difference. `kubectl apply -k ...` changes that selected cluster. A GitOps
+workflow may instead let Argo CD apply the same composition after review.
+
+The [Kubernetes guide](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
+describes available transformations and patches. Check capabilities in the actual bundled/installed
+Kustomize version before relying on a new feature.
+
+## Review the result, not only the patch
+
+Inspect actual namespaces, names/selectors, image digests, ports, health checks, secret references,
+volumes, policies, and replica/disruption behavior. Namespace composition must match Argo CD project
+permissions. A typo can yield a valid resource that selects no pods or references the wrong Secret.
+
+Render every maintained overlay, including inactive scaffolds, but distinguish rendering from active
+registration. A directory only becomes a deployment source when a controller or operator explicitly
+selects it. Avoid copying a base into separate environment folders that silently diverge; share what
+is genuinely common and make meaningful environment differences explicit.

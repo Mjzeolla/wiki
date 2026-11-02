@@ -1,0 +1,13 @@
+---
+title: 'Kubernetes Policy'
+description: 'Understand policies that evaluate resource requests and existing cluster configuration.'
+tags: ['security', 'kyverno', 'policy']
+status: 'growing'
+sources: ['https://kyverno.io/docs/introduction/']
+---
+
+Kubernetes policy defines constraints or transformations for selected resources. Keep the desired rule, its evaluator, its scope, and its enforcement mode explicit.
+
+- [Kyverno](/docs/security/policy/kyverno): Admission control, background evaluation, a complete local policy exercise, and troubleshooting.
+
+Argo CD delivers desired resources; a policy engine evaluates whether matching requests satisfy policy. Kubernetes RBAC answers who can request operations. Pod Security Admission enforces selected Pod Security Standards. NetworkPolicy controls supported network traffic. These controls address different boundaries and need their own verification.

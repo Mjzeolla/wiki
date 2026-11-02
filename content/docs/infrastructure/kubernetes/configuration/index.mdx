@@ -1,0 +1,25 @@
+---
+title: 'Kubernetes Configuration Tools'
+description: 'Choose chart packaging, manifest composition, and controller ownership without confusing rendering with deployment.'
+tags:
+  - kubernetes
+  - helm
+  - kustomize
+status: growing
+sources:
+  - https://helm.sh/docs/topics/charts/
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+---
+
+Helm and Kustomize both produce Kubernetes objects, but they solve different configuration problems.
+Neither a chart file nor an overlay directory continuously deploys itself.
+
+- [Helm](/docs/infrastructure/kubernetes/configuration/helm) explains charts, values, rendered resources, release ownership, and upgrades.
+- [Kustomize](/docs/infrastructure/kubernetes/configuration/kustomize) explains bases, overlays, namespaces, patches, and rendering checks.
+
+An operator can apply the result directly, or a controller such as [Argo CD](/docs/infrastructure/gitops/argocd) can own the
+render/apply/reconciliation path. Choose one durable owner for each object rather than mixing
+independent release tools that repeatedly overwrite the same fields.
+
+Start with the existing [Kubernetes tools guide](/docs/infrastructure/kubernetes/tools) for CLI access and basic inspection.
+Then render the exact environment configuration and verify permissions and runtime dependencies.

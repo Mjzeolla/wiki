@@ -1,0 +1,47 @@
+---
+title: 'GitOps Rollback and Recovery'
+description: 'Restore a compatible desired version while separating object rollback from migrations and data restoration.'
+tags:
+  - gitops
+  - rollback
+  - recovery
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+---
+
+Use this when an application change fails verification. Identify whether the problem is source
+access, rendering, admission, rollout, dependency health, or changed data before choosing rollback.
+A version change does not repair every failure class.
+
+## Establish compatibility before reverting
+
+Find the previous known-good source revision and image digest. Review database migrations, schema
+changes, message formats, external writes, and concurrently running versions. Determine whether the
+old binary can still operate against the current data. If not, follow the application's rehearsed
+forward-fix or restore procedure rather than blindly selecting an old image.
+
+Confirm fresh independently recoverable backups and recovery objectives when data restoration may
+be required. A persistent volume being retained is not evidence of a compatible database backup.
+
+## Restore the durable owner
+
+Change the watched desired state to the compatible known-good version through an approved review.
+Reconcile using the actual Application policy, then inspect its selected revision and rollout.
+A direct Kubernetes rollout undo changes live state outside the watched source and can be reverted
+by self-heal; if used as an incident intervention, record it and reconcile its intended outcome to Git.
+
+Argo CD rollback capabilities have policy constraints; consult the installed version and
+[automated sync behavior](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).
+A Git revert is often easier to audit as desired state, but it still needs compatibility review.
+
+## Verify recovery at the right level
+
+Confirm source agreement, workload health, service routing, and representative user behavior.
+For a restored database, verify integrity and business invariants as well as successful startup.
+Check that the fix did not disable alerts, backups, or access controls.
+
+Record the incident boundary, recovered version/recovery point, intervention, and remaining risk.
+If a controller, secret store, state backend, or cluster was lost, restore that owner's independent
+access/data before assuming application resynchronization will recover the whole environment.

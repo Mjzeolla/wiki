@@ -1,0 +1,65 @@
+---
+title: Kubernetes (K8s)
+description: A beginner guide to clusters, reconciliation, and the objects used to run applications.
+tags:
+  - kubernetes
+  - k8s
+status: growing
+aliases:
+  - k8s
+sources:
+  - https://kubernetes.io/docs/concepts/overview/
+  - https://kubernetes.io/docs/concepts/overview/components/
+---
+
+Kubernetes is an open-source platform for running containerized applications across a cluster of
+machines. **K8s** is an abbreviation: eight letters sit between the K and the s in Kubernetes.
+A cluster can use physical machines or virtual machines, and can run locally or with a cloud provider.
+See the [Kubernetes overview](https://kubernetes.io/docs/concepts/overview/).
+
+You describe the desired application state, such as “keep three copies of this API running.”
+Kubernetes controllers repeatedly compare that description with reality and act to bring them
+closer together. This process is called **reconciliation**. Successful submission of a manifest
+means the API accepted it; the application may still be waiting for storage, an image, or capacity.
+
+## The cluster's main parts
+
+| Part              | What it does                                                       |
+| ----------------- | ------------------------------------------------------------------ |
+| Control plane     | Runs the components that manage cluster state and scheduling       |
+| API server        | Receives requests from clients and other components                |
+| etcd              | Stores cluster API data in the standard control-plane architecture |
+| Scheduler         | Selects a suitable node for a Pod that has not been assigned one   |
+| Controllers       | Reconcile objects, such as creating replacement Pods               |
+| Node              | A machine that provides compute capacity for workloads             |
+| kubelet           | Node agent that ensures assigned Pods' containers are running      |
+| Container runtime | Starts and manages containers on a node                            |
+
+Networking and storage integrations provide the connectivity and volumes applications need.
+Implementations vary by distribution; a small cluster can combine control-plane and workload roles
+on the same machines. See [Kubernetes components](https://kubernetes.io/docs/concepts/overview/components/).
+
+## Read the fundamentals
+
+- [Objects and Namespaces](/docs/infrastructure/kubernetes/objects-and-namespaces): manifests, scope, labels, and selectors.
+- [Pods and workloads](/docs/infrastructure/kubernetes/pods-and-workloads): Deployments, StatefulSets, DaemonSets, Jobs, and health.
+- [Services and networking](/docs/infrastructure/kubernetes/services-and-networking): stable addresses, routing, and traffic policy.
+- [Kubernetes tools](/docs/infrastructure/kubernetes/tools): kubectl, Helm, Kustomize, and everyday cluster helpers.
+- [Configuration, storage, and access](/docs/infrastructure/kubernetes/configuration-storage-and-access): ConfigMaps, Secrets, volumes, and permissions.
+
+For an API, a Deployment maintains Pods, a Service gives clients a stable way to reach them, and
+ConfigMaps and Secrets supply runtime configuration. A stateful application may also request a
+persistent volume. These objects cooperate; creating one does not automatically create all the others.
+
+[Prometheus](/docs/observability/metrics/prometheus) can monitor the cluster, [Loki](/docs/observability/logs/loki) can collect workload logs, and
+[Grafana](/docs/observability/dashboards/grafana) can display both. These are additional systems, rather than built-in telemetry storage.
+
+## Configuration and infrastructure learning path
+
+Read the deeper [configuration tools guide](/docs/infrastructure/kubernetes/configuration) for Helm and Kustomize, then
+[Argo CD](/docs/infrastructure/gitops/argocd) for continuous source reconciliation. [Infrastructure automation](/docs/infrastructure)
+explains how provisioning and host configuration establish the cluster those tools operate.
+
+The [local labs](/docs/playbooks/operations/infrastructure) teach OpenTofu and Ansible without cloud or shared-cluster access.
+
+- [Kubernetes storage](/docs/infrastructure/kubernetes/storage): Follow storage claims through NFS CSI provisioning and mounts.

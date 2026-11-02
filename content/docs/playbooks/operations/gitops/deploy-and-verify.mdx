@@ -1,0 +1,67 @@
+---
+title: 'Deploy and Verify a GitOps Workload'
+description: 'Trace an approved image/configuration change from remote source through Argo CD and actual service behavior.'
+tags:
+  - gitops
+  - argo-cd
+  - playbooks
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+---
+
+Use this for an existing authorized GitOps environment. Before changing it, identify the product
+repository, immutable image, platform source revision/path, Application/project, workload namespace,
+required secrets, data migrations, network routes, and recovery constraints.
+
+## 1. Prepare a deployable contract
+
+Confirm the image supports its declared port, probes, user/filesystem restrictions, resources, and
+shutdown behavior. Verify runtime/pull credentials are materialized in the right namespace and that
+outbound dependencies are allowed. A successful image push does not prove the cluster can pull it.
+
+Render the exact overlay or chart/version/values. Compare every explicit namespace and kind with
+AppProject permissions. Review stateful resource changes and migration compatibility before approval.
+
+## 2. Promote the reviewed artifact
+
+Change the watched desired state to the tested image digest/configuration and merge through the
+approved review path. Publishing the image and selecting it are separate actions. Do not rebuild
+source during promotion and assume the resulting bytes are the same artifact.
+
+Confirm Argo CD sees the intended remote revision. A local working-tree edit is not a watched source.
+If automated sync is disabled, an authorized operator requests sync after review; if enabled, the
+merge can be the deployment trigger. Use the actual environment policy rather than guessing.
+
+## 3. Inspect the controller and rollout
+
+For an illustrative Application `example-api` stored in `argocd`:
+
+```bash
+kubectl config current-context
+kubectl -n argocd get application example-api -o yaml
+```
+
+Use its real rendered workload namespace for Deployment/pod checks. With an actual Deployment named
+`example-api` in namespace `example-api-lab`:
+
+```bash
+kubectl -n example-api-lab get deployment,pods,service,endpointslice
+kubectl -n example-api-lab rollout status deployment/example-api --timeout=300s
+kubectl -n example-api-lab get events --sort-by=.metadata.creationTimestamp
+```
+
+These inspect/wait; they do not create or repair the resources. An absent workload can reflect a
+source/project/admission failure before any container started.
+
+## 4. Verify the service and data
+
+Confirm the selected revision/digest, ready endpoints, relevant DNS/TLS/routing, and a representative
+application request. Check required dependencies and application/data invariants, not only the
+container's readiness route. Verify alerts and backup jobs continue to function after stateful changes.
+
+Record the source/artifact, result, and non-sensitive evidence. A healthy old revision is not proof
+the new one deployed. If verification fails, preserve the failing layer and use
+[rollback and recovery](/docs/playbooks/operations/gitops/rollback-and-recovery) with the product's compatibility constraints.

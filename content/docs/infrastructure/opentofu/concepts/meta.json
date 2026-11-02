@@ -1,0 +1,4 @@
+{
+  "title": "OpenTofu Concepts",
+  "pages": ["index", "hcl-and-values", "providers-and-resources", "modules-and-dependencies"]
+}

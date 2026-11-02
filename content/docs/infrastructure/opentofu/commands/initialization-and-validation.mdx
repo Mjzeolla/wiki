@@ -1,0 +1,44 @@
+---
+title: 'Initialize and Validate OpenTofu'
+description: 'Distinguish formatting, schema validation, provider installation, backend access, and real environment checks.'
+tags:
+  - opentofu
+  - commands
+  - validation
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/init/
+  - https://opentofu.org/docs/cli/commands/validate/
+  - https://opentofu.org/docs/cli/commands/fmt/
+---
+
+These commands assume a real root module in the current directory. None of the first three applies
+provider resource changes, but initialization can write local files and contact external systems.
+
+| Command                      | Evidence/result                                    | Side effects                                                           |
+| ---------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `tofu version`               | Installed CLI and available dependency information | No infrastructure apply                                                |
+| `tofu fmt -check -recursive` | Whether HCL follows canonical formatting           | Does not rewrite files                                                 |
+| `tofu init`                  | Backend/module/provider initialization             | Downloads dependencies, writes local metadata, may contact the backend |
+| `tofu validate`              | Configuration and provider schema validity         | Needs initialized dependencies; not a provider-backed deployment test  |
+
+Use `tofu fmt -recursive` when you intend to rewrite formatting. Review the resulting diff.
+Initialization normally uses the backend declared by the root. If that root expects a protected
+backend file, pass it explicitly according to the project's procedure.
+
+## What backend-disabled initialization means
+
+`tofu init -backend=false` is useful for source/schema validation without initializing the selected
+backend. It does not test backend access, lock semantics, decryption recovery, or production inputs.
+A later real operation still needs the correct backend initialization. Review
+[initialization](https://opentofu.org/docs/cli/commands/init/) and [validation](https://opentofu.org/docs/cli/commands/validate/).
+
+## Why validation can pass before a real plan fails
+
+A provider schema can accept a VM declaration whose template does not exist. A typed input can be
+syntactically valid but point at an unreachable endpoint. Initialization may succeed while the token
+lacks permission for one required API operation. These are different evidence levels.
+
+Proceed from source checks to resolved environment-input checks, then an authenticated plan.
+Never substitute placeholder credentials or local replacement state just to turn a failed check green.
+Use the [local lab](/docs/playbooks/operations/infrastructure/local-opentofu-lab) for a complete no-cloud example.

@@ -1,0 +1,63 @@
+---
+title: 'Read an Application Field by Field'
+description: 'Explain source, revision, destination, project, rendering, and sync policy using one complete resource.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/helm/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/projects/',
+  ]
+---
+
+This is the Application used by the [first example](/docs/infrastructure/gitops/argocd/examples/first-application). Replace the account/repository URL with the repository you own. It is a teaching contract, not a resource already installed in your cluster.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: config-demo
+  namespace: argocd
+spec:
+  project: config-demo
+  source:
+    repoURL: https://github.com/YOUR_ACCOUNT/argocd-learning.git
+    targetRevision: main
+    path: apps/config-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-lab
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
+```
+
+## Identity and placement are different fields
+
+`metadata.name` identifies the Application. `metadata.namespace: argocd` stores that custom resource beside the assumed Argo CD installation. `spec.destination.namespace: argocd-lab` is the default target namespace for its namespaced workload resources. Query the former for Application status and the latter for the ConfigMap.
+
+The destination server selects the registered cluster endpoint. `https://kubernetes.default.svc` selects the in-cluster destination in this example; it is not the workload's public address.
+
+## Source is a deployable contract
+
+`repoURL` identifies the remote repository. `targetRevision` selects a branch, tag, or Git commit for this Git source. `path` selects a directory inside that revision. Here, its `kustomization.yaml` identifies the objects to render.
+
+A moving branch allows later commits to become desired state after detection. A commit pin requires a source revision change to select different bytes. Neither choice independently pins container images declared in those bytes. See the [Application specification](https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/).
+
+## Permissions are an additional boundary
+
+`project: config-demo` references an AppProject in the Argo CD namespace. The project allows this source, destination, and resource kind. It does not supply Git credentials, and it does not replace Kubernetes RBAC or admission policy. A valid manifest can still fail any of those boundaries.
+
+## The missing automation block is deliberate
+
+There is no `syncPolicy.automated`, so the example waits for an operator sync. `FailOnSharedResource=true` is a sync option intended to fail when a resource is already managed by another Application; it does not grant ownership over arbitrary resources.
+
+Namespace creation is also deliberately absent. The operator creates `argocd-lab` before sync. Creating a Namespace is cluster-scoped and would require its own permission and ownership decision. Read [sync options](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/) before adding convenience flags.
+
+## Git and Helm revisions mean different things
+
+For the Git source above, `targetRevision` selects Git history. For a Helm chart source using `chart`, it selects a chart version. Helm values are render inputs, not Kubernetes resources by themselves. Argo CD uses Helm to generate manifests and manages their lifecycle; there is no separate operator-issued `helm upgrade` for this Application. See [Helm integration](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
+
+Keep these identities distinct when debugging: Application name, source revision, chart version, image digest, destination namespace, and workload resource name.

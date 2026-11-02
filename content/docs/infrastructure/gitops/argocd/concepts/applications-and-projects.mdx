@@ -1,0 +1,64 @@
+---
+title: 'Applications and AppProjects'
+description: 'Read source selection, explicit namespaces, allowed resource kinds, and the administrative power of root applications.'
+tags:
+  - argo-cd
+  - rbac
+  - gitops
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/projects/
+---
+
+An `Application` connects source configuration to a destination cluster/namespace. An `AppProject`
+constrains which sources, destinations, and resource kinds that Application may use. Kubernetes RBAC
+and admission controls remain additional boundaries; a permissive AppProject is not a substitute
+for either.
+
+This illustrative Application requires a repository that actually contains the named Kustomization,
+a registered cluster, and an existing project with matching permissions. It is not ready to apply
+unchanged:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: example-api
+  namespace: argocd
+spec:
+  project: applications
+  source:
+    repoURL: https://example.com/team/platform.git
+    targetRevision: main
+    path: kubernetes/apps/example-api/overlays/lab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: example-api-lab
+```
+
+There is no automated sync policy in this example. The source/destination fields are described in
+the [Application specification](https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/).
+
+## Check the rendered namespace
+
+The destination namespace provides context for resources that need it. An explicit namespace already
+rendered into an object is not universally overwritten by that default. If an overlay emits
+`team-api-lab` while the project permits only `example-api-lab`, the configuration can render locally
+and still be denied during synchronization.
+
+Compare three values: the Application destination, every actual rendered namespace, and the
+AppProject destinations. Also review cluster-scoped kinds separately from namespaced kinds.
+A Namespace object is cluster-scoped even though it establishes a namespace for other objects.
+
+## Restrict source trust and administrative resources
+
+A project that can write Applications, AppProjects, RBAC, admission policy, or broad cluster-scoped
+resources can have a much larger impact than a project restricted to one workload namespace.
+Root “app of apps” repositories should be treated as administrator-controlled source.
+
+Allowlisting a repository URL authorizes content from the selected source under the project rules.
+Review who can change that repository and watched revision, which templates/plugins it uses, and
+what credentials the controller needs. A read-only Git key limits Git writes; it does not limit the
+Kubernetes power of malicious manifests read from an authorized repository.
+See [projects](https://argo-cd.readthedocs.io/en/stable/user-guide/projects/).

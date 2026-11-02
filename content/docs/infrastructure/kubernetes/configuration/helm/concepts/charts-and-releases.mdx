@@ -1,0 +1,55 @@
+---
+title: 'Charts, Releases, and Versions'
+description: 'Distinguish chart packaging, application versions, release names, and release revisions.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/topics/charts/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/helm/',
+  ]
+---
+
+## A chart is a package of Kubernetes configuration
+
+A chart contains metadata, defaults, and templates that produce Kubernetes manifests. A chart can live in a Git directory, a packaged archive, a traditional chart repository, or an OCI registry. A values file is an input to a selected chart; it is not a deployable workload by itself.
+
+```text
+chart metadata + defaults + selected values + rendering context
+  -> rendered Kubernetes objects
+  -> chosen deployment owner applies them
+  -> Kubernetes controllers reconcile the workload
+```
+
+The [chart reference](https://helm.sh/docs/topics/charts/) describes the file format. Helm's documentation spans major versions; check `helm version` and the installed command help before adopting version-specific flags.
+
+## Read the files by responsibility
+
+| File                     | Responsibility                                                 |
+| ------------------------ | -------------------------------------------------------------- |
+| `Chart.yaml`             | Name, chart version, metadata, and optional dependencies       |
+| `values.yaml`            | Default input values                                           |
+| `values.schema.json`     | Optional validation contract for merged input values           |
+| `templates/`             | Go templates that render Kubernetes objects                    |
+| `templates/_helpers.tpl` | Optional named template helpers, not standalone resources      |
+| `charts/`                | Dependency charts available to the build                       |
+| `Chart.lock`             | Resolved dependency versions when dependencies are locked      |
+| `crds/`                  | CustomResourceDefinitions with special Helm lifecycle handling |
+
+## Version names answer different questions
+
+| Identity         | Example                            | Meaning                                            |
+| ---------------- | ---------------------------------- | -------------------------------------------------- |
+| Chart version    | `0.1.0`                            | Version of the configuration package               |
+| `appVersion`     | `"1.0.0"`                          | Informational application version metadata         |
+| Image reference  | A reviewed `repository@sha256:...` | Container artifact selected by a workload template |
+| Release name     | `learning`                         | Installed/rendered instance name                   |
+| Release revision | `1`, then `2`                      | History of a Helm-managed release                  |
+
+`appVersion` does not automatically change a container image. A template must explicitly consume the relevant value. Chart pins and image pins are separate review decisions.
+
+## A release needs an owner
+
+An ordinary `helm install` or `helm upgrade` manages a Helm release and its stored history in the selected namespace. `helm template` renders without installing a release. Under Argo CD, Helm renders and Argo CD owns reconciliation; `helm list` is not the authoritative inventory of those Applications.
+
+Do not alternate independent Helm and Argo CD updates against the same resources. Identify the owner before upgrading, rolling back, or uninstalling. Continue with [values and templates](/docs/infrastructure/kubernetes/configuration/helm/concepts/values-and-templates).

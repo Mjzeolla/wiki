@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join, extname, relative, sep } from 'node:path';
 import { basePath } from '../../src/config/hosting/index.mjs';
-import { documentationRedirects } from '../../src/config/redirects/index.mjs';
 
 async function files(dir) {
   return (
@@ -51,11 +50,19 @@ for (const file of htmlFiles) {
 }
 const search = JSON.parse(await readFile('out/api/search', 'utf8'));
 assert(search && typeof search === 'object', 'Missing static search data');
-for (const { source, destination } of documentationRedirects) {
-  const html = await readFile(join('out', source, 'index.html'), 'utf8');
-  assert(html.includes(`${basePath}${destination}/`), `Incorrect redirect: ${source}`);
+const homepage = await readFile('out/index.html', 'utf8');
+assert(homepage.includes(`${basePath}/docs/`), 'Missing documentation homepage forwarding');
+for (const retired of ['knowledge', 'notes', 'glossary']) {
+  assert(!(await exists(`out/docs/${retired}/index.html`)), `Unexpected legacy page: ${retired}`);
 }
-assert((await readFile('out/llms.txt', 'utf8')).includes('Knowledge'));
+const llmIndex = await readFile('out/llms.txt', 'utf8');
+const navigation = JSON.parse(await readFile('content/docs/meta.json', 'utf8'));
+for (const subject of navigation.pages.filter((page) => page !== 'index')) {
+  assert(
+    llmIndex.includes(`](${basePath}/docs/${subject})`),
+    `Missing subject in LLM index: ${subject}`,
+  );
+}
 console.log(
-  `Validated ${htmlFiles.length} exported HTML files, ${checked} asset/navigation URLs, static search, LLM index, and redirects.`,
+  `Validated ${htmlFiles.length} exported HTML files, ${checked} asset/navigation URLs, static search, LLM index, and homepage forwarding.`,
 );

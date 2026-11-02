@@ -1,0 +1,32 @@
+---
+title: Frontend Foundations
+description: State, data, type safety, validation, styling, and component choices for React applications.
+tags:
+  - frontend
+  - react
+status: growing
+---
+
+| Area                                                                    | Primary responsibility                              |
+| ----------------------------------------------------------------------- | --------------------------------------------------- |
+| [State and data](/docs/development/frontend/state-and-data)             | Client state and remote-data ownership              |
+| [Types and validation](/docs/development/frontend/types-and-validation) | Compile-time contracts and runtime boundary parsing |
+| [Styling](/docs/development/frontend/styling)                           | Styling strategy, class composition, and variants   |
+| [UI libraries](/docs/development/frontend/ui-libraries)                 | Components, behavior, and accessibility             |
+
+For a Tailwind component library, the common progression is `clsx`, then `tailwind-merge` when
+consumer overrides are supported, then CVA when components expose a real variant API. Do not add
+all three automatically to an application that does not need those responsibilities. The
+[class-composition guide](/docs/development/frontend/styling/class-composition) explains where each role belongs.
+
+Tailwind supplies styling utilities, not complete component behavior. See [UI libraries](/docs/development/frontend/ui-libraries)
+for when to adopt shadcn/ui, headless primitives, or a packaged component suite.
+
+For shared client state and remote data, use the [state-and-data decision guide](/docs/development/frontend/state-and-data)
+before adding Redux Toolkit, RTK Query, or TanStack Query.
+
+For routing, server rendering, and server code around React, see the [Next.js guide](/docs/development/frontend/frameworks/nextjs)
+and its [basic walkthrough](/docs/playbooks/development/nextjs-basics).
+
+Compare application architecture under [Frameworks](/docs/development/frontend/frameworks), compilation and bundling under
+[Build Tools](/docs/development/frontend/build-tools), and hosting behavior in the [SPA/server rendering comparison](/docs/development/frontend/frameworks/rendering-models).

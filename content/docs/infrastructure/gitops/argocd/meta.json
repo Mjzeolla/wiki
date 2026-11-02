@@ -1,0 +1,4 @@
+{
+  "title": "Argo CD",
+  "pages": ["index", "concepts", "configuration", "examples", "commands", "troubleshooting"]
+}

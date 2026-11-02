@@ -1,0 +1,61 @@
+---
+title: 'Inventory and Groups'
+description: 'Understand host identifiers, nested membership, connection settings, and safe inventory inspection.'
+tags:
+  - ansible
+  - inventory
+  - configuration
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_inventory.html
+  - https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_patterns.html
+---
+
+Inventory tells Ansible which hosts exist for an operation and which groups/variables apply. It can
+come from static files, dynamic plugins, or combined sources. Inventory does not create those hosts.
+A provisioning output can feed an inventory generator, but the generation step needs an explicit owner.
+
+This illustrative YAML uses documentation-only addresses:
+
+```yaml
+all:
+  children:
+    application:
+      children:
+        frontend:
+          hosts:
+            web-01:
+              ansible_host: 192.0.2.10
+            web-02:
+              ansible_host: 192.0.2.11
+        background:
+          hosts:
+            worker-01:
+              ansible_host: 192.0.2.20
+```
+
+`web-01` is an inventory identifier; `ansible_host` is the connection address. A play targeting
+`frontend` selects two hosts. A play targeting `application` includes hosts from its child groups.
+The `groups['application']` variable represents host membership, not a list of child-group names.
+See [inventory construction](https://docs.ansible.com/projects/ansible/latest/inventory_guide/intro_inventory.html).
+
+## Groups select context, not separate copies of a host
+
+A host can belong to multiple groups and receives a combined variable context. Child/parent
+relationships affect membership and variable resolution. Putting a host into another group does
+not create another VM or independent host state. Avoid treating groups as isolated namespaces
+when the same host belongs to several of them.
+
+Host patterns can select groups, intersections, or exclusions. A `--limit` further restricts the
+play's selected hosts; it does not add hosts excluded by the play. A limit can therefore skip a
+bootstrap play that targets a special initial-server group.
+
+## Inspect safely
+
+`ansible-inventory -i inventory.yml --graph` is a useful membership view. `--list`, `--host`, and
+variable-expanded graphs can expose decrypted or resolved sensitive values, so do not publish their
+output indiscriminately. Prefer focused assertions over dumping an entire production host context.
+
+If a pattern matches no hosts, do not interpret the absence of failures as successful convergence.
+Verify expected membership and count before the procedure starts. Continue with
+[variable precedence](/docs/infrastructure/ansible/configuration/variables-and-precedence).

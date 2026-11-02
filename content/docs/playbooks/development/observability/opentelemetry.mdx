@@ -59,7 +59,7 @@ otelcol --config=collector.yaml
 ```
 
 The pipeline prints traces rather than storing them. See
-[Collector configuration](/docs/knowledge/tooling/observability/opentelemetry/collector) for its parts.
+[Collector configuration](/docs/observability/tracing/opentelemetry/collector) for its parts.
 
 ## 2. Emit related spans
 
@@ -115,5 +115,5 @@ propagation between services additionally needs injection/extraction at transpor
 
 Stop the Collector with Ctrl+C and deactivate the virtual environment. All files remain in the
 lab directory. For searchable retained traces, replace debug output with a chosen trace backend
-and verify export end to end. See the [OTel overview](/docs/knowledge/tooling/observability/opentelemetry)
+and verify export end to end. See the [OTel overview](/docs/observability/tracing/opentelemetry)
 and [official Python guide](https://opentelemetry.io/docs/languages/python/getting-started/).

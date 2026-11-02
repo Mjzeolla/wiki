@@ -1,0 +1,53 @@
+---
+title: 'Inventory and Validation Commands'
+description: 'Inspect configuration and host membership, then test syntax and selected connections without dumping secrets.'
+tags:
+  - ansible
+  - commands
+  - validation
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/cli/ansible-inventory.html
+  - https://docs.ansible.com/projects/ansible/latest/cli/ansible-playbook.html
+  - https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/ping_module.html
+---
+
+Run from the intended Ansible project root. These example filenames are contracts you must actually
+have, not special names Ansible creates automatically.
+
+```bash
+ansible --version
+ansible-config dump --only-changed
+ansible-inventory -i inventory.yml --graph
+ansible-playbook -i inventory.yml site.yml --syntax-check
+ansible-playbook -i inventory.yml site.yml --list-hosts
+ansible-playbook -i inventory.yml site.yml --list-tasks
+```
+
+The first commands show the selected runtime/configuration and group topology. Syntax validation
+loads the playbook; it does not establish every remote dependency or dynamic execution result.
+Task listings can be incomplete for runtime-selected content, so inspect includes and conditions too.
+See [playbook CLI options](https://docs.ansible.com/projects/ansible/latest/cli/ansible-playbook.html).
+
+## Connectivity is a separate check
+
+For an authorized real inventory:
+
+```bash
+ansible application -i inventory.yml -m ansible.builtin.ping
+```
+
+This contacts matched hosts using Ansible's connection/runtime and runs the ping module. It is not
+an ICMP probe and is not proof of sudo, application health, or database connectivity. Confirm the
+selected group contains the intended hosts before running it.
+
+## Validate values without disclosing them
+
+Inventory commands with full variable output can reveal decrypted content. Use focused assertions
+for required keys, allowed ranges, and group relationships. A successful membership graph does not
+mean the effective values are correct, and a successful decrypted assertion does not prove provider
+or SSH access.
+
+If syntax fails, resolve loading/collection/variable problems before contacting hosts. If a pattern
+matches zero hosts, correct inventory selection rather than declaring a clean result. The
+[local lab](/docs/playbooks/operations/infrastructure/local-ansible-lab) provides a complete inventory and playbook you can inspect and run.

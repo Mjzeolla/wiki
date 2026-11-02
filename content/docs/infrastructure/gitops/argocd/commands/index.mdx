@@ -1,0 +1,61 @@
+---
+title: 'Argo CD Inspection and Sync Commands'
+description: 'Inspect source revisions and workload status before requesting deliberate synchronization.'
+tags:
+  - argo-cd
+  - commands
+  - kubernetes
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_get/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_sync/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/commands/argocd_app_wait/
+---
+
+These examples assume an existing authorized Argo CD installation and a verified kubeconfig/CLI
+session. Application names and namespaces must come from the actual environment; they are not
+created by running an inspection command.
+
+## Start with Kubernetes API inspection
+
+```bash
+kubectl config current-context
+kubectl -n argocd get applications
+kubectl -n argocd get application example-api -o yaml
+```
+
+Inspect selected source/revision, destination/project, conditions, sync status, health, and operation
+state. The Application can be stored in a controller namespace different from the workload namespace.
+Do not query the controller namespace for an application's pods just because its Application lives there.
+
+## Use the Argo CD CLI deliberately
+
+```bash
+argocd app get example-api
+argocd app diff example-api
+```
+
+The CLI needs authorized access to the selected Argo CD server. A diff can include sensitive rendered
+or live values; review its handling before sharing. Refresh flags ask the controller to compare/fetch
+again; that is distinct from changing source and can interact with existing automation.
+
+Once the selected source change is approved, this requests synchronization and can change resources:
+
+```bash
+argocd app sync example-api
+argocd app wait example-api --sync --health --timeout 300
+```
+
+The wait command observes completion conditions; it does not turn failed dependencies into healthy
+ones. An ApplicationSet or parent source can own the Application spec, so a direct policy edit may
+be replaced by its owner. Prefer durable changes at the owning source.
+
+After sync, inspect Deployment rollout, pods, endpoints, and the user-facing behavior in the actual
+workload namespace. Follow [deploy and verify](/docs/playbooks/operations/gitops/deploy-and-verify) rather than equating a successful
+CLI operation with a complete application rollout.
+
+## Practice against a known declaration
+
+The [first Application example](/docs/infrastructure/gitops/argocd/examples/first-application) establishes
+the exact repository, project, destination, and resource that the commands inspect. Follow it when
+learning rather than substituting production names into an unfamiliar sync or deletion command.

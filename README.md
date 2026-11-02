@@ -1,35 +1,27 @@
 # Personal Wiki
 
-A content-first personal knowledge base rendered with Fumadocs. The repository separates
-durable knowledge, repeatable playbooks, raw notes, and glossary definitions so each idea
-has a clear owner and lifecycle.
+A content-first personal wiki rendered with Fumadocs. The homepage links directly to
+technical subjects; each subject owns its concepts, examples, commands, and glossary.
+Repeatable cross-system procedures live under Playbooks.
 
 ## Content map
 
 ```text
 content/docs/
-├── knowledge/
-│   ├── languages/             language-specific learning such as Go
-│   ├── platforms/             application-specific knowledge such as OpenSearch
-│   ├── concepts/              ideas that cross technologies
-│   └── practices/             durable engineering approaches
-├── playbooks/
-│   ├── development/           repeatable development procedures
-│   │   └── new-mac/           workstation bootstrap and recovery
-│   ├── operations/            maintenance, deployment, and recovery
-│   └── troubleshooting/       symptom-driven diagnostic procedures
-├── notes/
-│   ├── inbox/                 fast, unprocessed capture
-│   ├── daily/                 chronological learning logs
-│   └── evergreen/             durable observations without a narrower owner
-└── glossary/
-    ├── engineering/
-    ├── distributed-systems/
-    └── general/
+├── infrastructure/     Ansible, OpenTofu, Kubernetes, GitOps, and service discovery
+├── languages/          Go and C
+├── development/        frontend, services, testing, repository tooling, and AI tooling
+├── data/               databases and search
+├── networking/         HTTP, gRPC, and protocol contracts
+├── security/           secrets and access boundaries
+├── observability/      metrics, logs, traces, dashboards, and error tracking
+├── architecture/       concepts, distributed systems, practices, and subject glossaries
+└── playbooks/          repeatable development, operations, and troubleshooting procedures
 ```
 
-Capture unfinished material in `notes/inbox`, preserve chronological context under
-`notes/daily`, and promote useful material into Knowledge, Playbooks, or the Glossary.
+Keep reusable explanations here and environment-specific instructions in their owning
+repository. Use current subject URLs directly; there are no compatibility redirects for
+retired paths. Create new concern folders when they have real content.
 
 ## Development
 
@@ -61,14 +53,13 @@ TypeScript, local content-link validation, and a production Next.js build.
 Link checks are split by purpose:
 
 ```bash
-make test   # validate documentation routes, anchors, and redirects
+make test   # validate documentation links and anchors
 make links  # validate local targets and external HTTP(S) URLs
 ```
 
-Redirects are declared centrally under `src/config/redirects/`. Validation rejects duplicate
-sources, redirect chains, live-page shadowing, and destinations that are not generated from an MDX
-page. External link validation uses Lychee and runs as a separate CI job because network
-availability should not make the formatter, type checker, or production build nondeterministic.
+Local content validation checks current page and anchor targets. External link validation uses
+Lychee and runs as a separate CI job because network availability should not make the formatter,
+type checker, or production build nondeterministic.
 
 ## Git hooks
 

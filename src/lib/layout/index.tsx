@@ -7,9 +7,9 @@ export function baseOptions() {
     githubUrl: siteConfig.repository,
     iconSrc: publicPath('/icon.svg'),
     links: [
-      { text: 'Knowledge', url: '/docs/knowledge', on: 'nav' },
-      { text: 'Notes', url: '/docs/notes', on: 'nav' },
-      { text: 'Glossary', url: '/docs/glossary', on: 'nav' },
+      { text: 'Subjects', url: '/docs', on: 'nav' },
+      { text: 'Infrastructure', url: '/docs/infrastructure', on: 'nav' },
+      { text: 'Development', url: '/docs/development', on: 'nav' },
       { text: 'Playbooks', url: '/docs/playbooks', on: 'nav' },
     ],
   });

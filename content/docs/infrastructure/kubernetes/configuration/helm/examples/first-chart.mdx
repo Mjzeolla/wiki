@@ -1,0 +1,114 @@
+---
+title: 'Example: Create and Render a Helm Chart'
+description: 'Build a complete local chart with defaults, schema validation, and an environment override.'
+tags: ['helm', 'kubernetes']
+status: 'growing'
+sources:
+  [
+    'https://helm.sh/docs/topics/charts/',
+    'https://helm.sh/docs/helm/helm_template/',
+    'https://helm.sh/docs/helm/helm_package/',
+  ]
+---
+
+## Prepare the exercise
+
+Install a reviewed Helm CLI and confirm `helm version --short`. Work in a disposable directory. Everything through the packaging step below runs locally without Kubernetes access. The chart has no dependencies and renders one ConfigMap.
+
+```text
+helm-learning/
+├── charts/greeting/
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   ├── values.schema.json
+│   └── templates/configmap.yaml
+└── values.staging.yaml
+```
+
+Create `charts/greeting/Chart.yaml`:
+
+```yaml
+apiVersion: v2
+name: greeting
+description: A ConfigMap-only learning chart
+type: application
+version: 0.1.0
+appVersion: '1.0.0'
+```
+
+Create `charts/greeting/values.yaml`:
+
+```yaml
+message: hello-from-defaults
+```
+
+Create `charts/greeting/values.schema.json`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["message"],
+  "properties": {
+    "message": { "type": "string", "minLength": 1 }
+  }
+}
+```
+
+Create `charts/greeting/templates/configmap.yaml`:
+
+```text
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-greeting
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+data:
+  message: {{ .Values.message | quote }}
+```
+
+Create `values.staging.yaml`:
+
+```yaml
+message: hello-from-staging
+```
+
+## Render and inspect the result
+
+From `helm-learning/`:
+
+```bash
+helm lint ./charts/greeting
+helm template learning ./charts/greeting --namespace helm-lab
+helm template learning ./charts/greeting --namespace helm-lab -f values.staging.yaml
+helm template learning ./charts/greeting --namespace helm-lab \
+  -f values.staging.yaml --set-string message=from-command-line
+```
+
+Expect a ConfigMap named `learning-greeting` in `helm-lab`. The three renders should select `hello-from-defaults`, `hello-from-staging`, and `from-command-line`, respectively. Helm adds source comments; compare parsed object fields rather than treating comment differences as a deployment change.
+
+The release and namespace flags are render context here, not evidence that an installed release or Namespace exists. See [helm template](https://helm.sh/docs/helm/helm_template/).
+
+## Prove validation catches mistakes
+
+These commands should fail without modifying the chart or cluster:
+
+```bash
+helm template learning ./charts/greeting --set message=123
+helm template learning ./charts/greeting --set-string mesage=misspelled
+```
+
+The first supplies an integer where the schema requires a string. The second adds an unknown key. Fix the input rather than disabling schema validation to make the command pass.
+
+Package the chart locally:
+
+```bash
+helm package ./charts/greeting --destination .
+helm show chart ./greeting-0.1.0.tgz
+helm template learning ./greeting-0.1.0.tgz --namespace helm-lab
+```
+
+The package should render the same default object as the directory. Keep or remove the known temporary directory after the exercise. For deployment, choose either the [Helm release commands](/docs/infrastructure/kubernetes/configuration/helm/commands) or the [Argo CD example](/docs/infrastructure/kubernetes/configuration/helm/examples/argocd) in separate lab namespaces; do not create two owners for one object.

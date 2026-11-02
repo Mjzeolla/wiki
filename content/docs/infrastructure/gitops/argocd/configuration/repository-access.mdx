@@ -1,0 +1,45 @@
+---
+title: 'Repository Access and Bootstrap Boundaries'
+description: 'Distinguish repository authorization, credentials, controller installation, and secret ownership.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources: ['https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/']
+---
+
+## Three independent prerequisites
+
+For the first lab, the repository must exist remotely, Argo CD must be able to read it, and the AppProject must permit it. A project source allowlist is not a credential. A successful local `git clone` uses your workstation's identity, which says nothing about the repository server's access.
+
+A public repository simplifies the exercise. For private Git, an administrator provides a dedicated read-only identity through the installation's approved secret-management workflow. Verify the endpoint and SSH host trust or TLS certificate trust; do not bypass verification to make an authentication error disappear.
+
+## Recognize the declarative credential shape
+
+This is an illustrative Secret shape, not an instruction to commit a private key:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: learning-repository
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  type: git
+  url: https://github.com/YOUR_ACCOUNT/argocd-learning.git
+  username: REPLACE_THROUGH_APPROVED_SECRET_DELIVERY
+  password: REPLACE_THROUGH_APPROVED_SECRET_DELIVERY
+```
+
+The label identifies its role to Argo CD. The URL must match the selected repository access configuration. SSH repositories use a private-key field and corresponding trust setup instead of this HTTPS form. GitHub App authentication has another contract. See [declarative repository setup](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
+
+Keep the non-secret resource definition and the credential delivery mechanism separate. Use a secret controller, an approved encrypted representation, or a documented bootstrap operation. Kubernetes `stringData` is plaintext input; putting it in YAML does not encrypt it.
+
+## What must exist before GitOps can start
+
+A controller cannot fetch its own source before its components, CRDs, network access, and initial credentials are available. Define a bootstrap owner for those prerequisites and the first Application. Later self-management of Argo CD is possible, but upgrading or deleting its own CRDs and controllers needs a deliberate recovery procedure.
+
+Record which mechanism owns controller installation, repository credentials, AppProjects, and root Applications. Avoid two continuous writers for the same object. Recreating declarations after a failure does not restore external credentials or persistent application data.
+
+For the exercise, use an existing authorized Argo CD installation. Its installation and cluster ownership are prerequisites, not hidden steps the example performs.

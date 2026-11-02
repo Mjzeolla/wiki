@@ -1,0 +1,13 @@
+{
+  "title": "Ansible Concepts",
+  "pages": [
+    "index",
+    "controller-and-connections",
+    "plays-tasks-and-roles",
+    "templates-and-handlers",
+    "idempotency-and-check-mode",
+    "facts-and-registered-results",
+    "conditions-and-loops",
+    "change-and-failure"
+  ]
+}

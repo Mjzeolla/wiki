@@ -1,0 +1,44 @@
+---
+title: 'Troubleshoot Policy Evaluation'
+description: 'Separate matching failures, audit behavior, admission denials, and webhook availability.'
+tags: ['security', 'kyverno', 'policy']
+status: 'growing'
+sources:
+  [
+    'https://kyverno.io/docs/policy-types/cluster-policy/autogen/',
+    'https://kyverno.io/docs/guides/reports/',
+  ]
+---
+
+## Identify the effective rule
+
+| Observation                                 | Inspect                                                                                    | Interpretation                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| A resource is accepted unexpectedly         | Kind, namespace name/labels, match/exclude rules, exceptions, and mode                     | It may be out of scope, audited, or excepted                       |
+| A workload sync fails with a policy message | Argo CD operation details and the named policy/rule                                        | The desired resource was evaluated and rejected                    |
+| A Deployment passes but its Pods fail       | Effective generated rules, Pod admission events, and controller templates                  | Parent admission and resulting Pod admission are separate evidence |
+| Existing violations remain                  | Background settings and reports                                                            | Validation reports do not automatically repair or evict resources  |
+| Admission times out                         | Webhook registration, service endpoints, controller pods, certificates, and failure policy | Availability failure differs from a policy decision                |
+| A CLI fixture is skipped                    | Its resource context and the rule's match conditions                                       | A skipped evaluation is not a successful compliance check          |
+
+For Pod policies, Kyverno can generate related rules for supported higher-level controllers. Inspect the installed policy and generated rules rather than assuming every custom controller is covered. See [auto-generation](https://kyverno.io/docs/policy-types/cluster-policy/autogen/).
+
+## Inspect an authorized environment
+
+The following examples assume the engine namespace is `kyverno`. Use the actual namespace and names from your installation:
+
+```bash
+kubectl config current-context
+kubectl -n kyverno get deployments,pods,services,endpointslices
+kubectl get clusterpolicies
+kubectl -n YOUR_WORKLOAD_NAMESPACE get events --sort-by=.metadata.creationTimestamp
+kubectl -n YOUR_WORKLOAD_NAMESPACE get policyreports
+```
+
+Installed report APIs can vary by release and configuration; use `kubectl api-resources` to discover available kinds before assuming a report command is supported. Inspect a specific policy and its conditions locally; do not publish complete Secret-bearing workload manifests or unredacted controller logs.
+
+## Correct the owning source
+
+When Argo CD manages a failing workload, update its manifests or deliberately review the policy at its own source. Repeated sync does not make an invalid resource compliant. Removing a production label or disabling enforcement to obtain a green operation changes the protection boundary rather than fixing the workload.
+
+A permitted Kubernetes API request still needs runtime checks: image pulling, scheduling, probes, storage, networking, and application behavior. Likewise, a vulnerability scanner and image-signature verifier enforce different contracts from ordinary validation patterns.

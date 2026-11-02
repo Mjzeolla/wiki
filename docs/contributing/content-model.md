@@ -4,13 +4,15 @@
 
 Use this decision order:
 
-1. Is it unfinished capture? Put it in `notes/inbox/`.
-2. Is chronology important? Put it under `notes/daily/<year>/`.
-3. Is it a repeatable procedure? Put it under `playbooks/`.
-4. Is it a concise definition? Put it under `glossary/<domain>/`.
-5. Is it technology-specific knowledge? Put it under the owning language or platform.
-6. Is it durable and genuinely cross-technology? Use `knowledge/concepts/`,
-   `knowledge/practices/`, or `notes/evergreen/` as appropriate.
+1. Is it a repeatable procedure? Put it under `playbooks/`.
+2. Is it a concise definition? Put it in its subject's glossary.
+3. Is it technology-specific? Put it under infrastructure, languages, development,
+   data, networking, security, or observability and then its technology owner.
+4. Is it genuinely cross-technology? Put it under `architecture/`.
+5. Is it unverified capture? Refine it before adding it to published documentation.
+
+There is no `knowledge/`, central `glossary/`, or `notes/` content section.
+The homepage links directly to subjects. Create a subsection only with useful content.
 
 Reuse does not erase ownership. A Go concept referenced by an OpenSearch note still belongs
 under Go if Go owns the behavior.

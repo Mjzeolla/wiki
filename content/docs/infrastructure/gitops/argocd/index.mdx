@@ -1,0 +1,54 @@
+---
+title: 'Argo CD'
+description: 'Learn GitOps source selection, rendering, permissions, synchronization, and runtime verification.'
+tags:
+  - argo-cd
+  - gitops
+  - kubernetes
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/core_concepts/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/
+---
+
+Argo CD is a Kubernetes GitOps delivery controller. An Application selects a source and revision,
+a rendering method, a destination, and a project/policy boundary. Argo CD compares the rendered
+objects with the cluster and can synchronize them according to the selected policy.
+
+It does not build your container image, provision every VM, or execute an arbitrary repository's
+Ansible/OpenTofu code. A publishing pipeline and an Application are separate execution paths.
+See [Argo CD concepts](https://argo-cd.readthedocs.io/en/stable/core_concepts/).
+
+```text
+Reviewed source revision -> repository access -> manifest rendering
+  -> project/destination checks -> synchronization -> Kubernetes controllers
+  -> resource health -> application-level verification
+```
+
+A local file is not a watched remote revision. A successful source commit is not proof of sync,
+and a successful sync is not proof that the application serves useful requests.
+
+## Follow the example-driven path
+
+Start with [how declarative deployment works](/docs/infrastructure/gitops/argocd/concepts/declarative-control-loop),
+then [read the Application fields](/docs/infrastructure/gitops/argocd/configuration/application-anatomy).
+The [examples](/docs/infrastructure/gitops/argocd/examples) build one coherent learning repository:
+one ConfigMap, its project/Application, a parent catalog, environment overlays, and lifecycle experiments.
+Use the existing references below when you need a specific policy or command.
+
+Read [the app of apps definition](/docs/infrastructure/gitops/argocd/concepts/app-of-apps)
+to distinguish a parent Application from an AppProject, a collection of workloads, or an ApplicationSet.
+
+## Learn the control loop
+
+- [Applications and projects](/docs/infrastructure/gitops/argocd/concepts/applications-and-projects) explain source/destination contracts and permission boundaries.
+- [Sync, health, and drift](/docs/infrastructure/gitops/argocd/concepts/sync-health-and-drift) separate configuration agreement from workload condition.
+- [Rendering and environments](/docs/infrastructure/gitops/argocd/configuration/rendering-and-environments) compare Git paths, Kustomize, and Helm.
+- [Bootstrap and ownership](/docs/infrastructure/gitops/argocd/configuration/bootstrap-and-ownership) explain the first installation and root/child graphs.
+- [Policies and ordering](/docs/infrastructure/gitops/argocd/configuration/policies-and-ordering) explain automation, pruning, deletion, and dependency limits.
+- [Commands](/docs/infrastructure/gitops/argocd/commands) show targeted inspection and deliberate synchronization.
+- [Troubleshooting](/docs/infrastructure/gitops/argocd/troubleshooting) narrow failures from source access through runtime behavior.
+
+Use the [deploy/verify playbook](/docs/playbooks/operations/gitops/deploy-and-verify) for an existing authorized environment.
+Its example repository URLs are contracts to replace, not public repositories you should trust
+or a reason to bootstrap into a shared cluster without an owner.

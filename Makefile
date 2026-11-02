@@ -44,7 +44,7 @@ markdown: ## Run Markdownlint
 markdown-fix: ## Apply safe Markdownlint fixes
 	mise exec -- pnpm markdown:fix
 
-test: ## Validate documentation links, generated routes, and redirects
+test: ## Validate documentation links and anchors
 	mise exec -- pnpm test
 
 typecheck: ## Generate content types and run TypeScript checks

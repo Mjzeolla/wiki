@@ -1,0 +1,4 @@
+{
+  "title": "Configuration Tools",
+  "pages": ["index", "helm", "kustomize"]
+}

@@ -1,0 +1,143 @@
+---
+title: 'Local Ansible Convergence Lab'
+description: 'Run a complete role on localhost, predict a file change, verify its contents, and observe a second unchanged run.'
+tags:
+  - ansible
+  - lab
+  - playbooks
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html
+---
+
+Use this exercise to connect inventory, explicit role variables, templates, handlers, and repeat-run
+behavior. It changes a single file inside a new temporary directory. It does not use sudo, change
+system services, or contact a remote machine.
+
+## Prerequisites and layout
+
+Install `ansible-playbook` with a supported controller Python, then run `ansible --version`.
+Create an isolated directory and the role's directories:
+
+```bash
+lab_dir="$(mktemp -d "${TMPDIR:-/tmp}/wiki-ansible.XXXXXX")"
+cd "$lab_dir"
+mkdir -p roles/lab_config/defaults roles/lab_config/tasks
+mkdir -p roles/lab_config/templates roles/lab_config/handlers
+```
+
+All following filenames are relative to this directory. Select inventory explicitly in every command.
+
+## 1. Inventory and play
+
+Create `inventory.yml`:
+
+```yaml
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: '{{ ansible_playbook_python }}'
+```
+
+Create `site.yml`:
+
+```yaml
+- name: Configure an isolated local file
+  hosts: all
+  gather_facts: false
+  become: false
+  roles:
+    - role: lab_config
+      lab_config_message: hello-from-lab
+```
+
+`localhost` is an inventory host with a local connection. The interpreter setting selects the
+controller's Python. The play calls the role explicitly and overrides its reusable default.
+
+## 2. Default and template
+
+Create `roles/lab_config/defaults/main.yml`:
+
+```yaml
+lab_config_message: hello
+```
+
+Create `roles/lab_config/templates/app.conf.j2`:
+
+```text
+message={{ lab_config_message }}
+```
+
+This template contains no credentials. A real secret-bearing configuration would need additional
+logging/diff controls and appropriate delivery/rotation design.
+
+## 3. Tasks and handler
+
+Create `roles/lab_config/tasks/main.yml`:
+
+```yaml
+- name: Render the local lab configuration
+  ansible.builtin.template:
+    src: app.conf.j2
+    dest: '{{ playbook_dir }}/app.conf'
+    mode: '0600'
+  notify: Report configuration update
+
+- name: Read the resulting configuration
+  ansible.builtin.slurp:
+    src: '{{ playbook_dir }}/app.conf'
+  register: rendered_config
+  when: not ansible_check_mode
+
+- name: Verify the requested message
+  ansible.builtin.assert:
+    that:
+      - "('message=' ~ lab_config_message) in (rendered_config.content | b64decode)"
+  when: not ansible_check_mode
+```
+
+Create `roles/lab_config/handlers/main.yml`:
+
+```yaml
+- name: Report configuration update
+  ansible.builtin.debug:
+    msg: The local configuration changed; no system service was restarted.
+```
+
+The handler only reports a change. It is intentionally harmless. Read/verification tasks skip check
+mode because a predicted file may not exist yet; that is an explicit check-mode limitation, not proof
+that preview verified the resulting content.
+
+## 4. Inspect, preview, and converge
+
+```bash
+ansible-inventory -i inventory.yml --graph
+ansible-playbook -i inventory.yml site.yml --syntax-check
+ansible-playbook -i inventory.yml site.yml --check --diff
+ansible-playbook -i inventory.yml site.yml
+ansible-playbook -i inventory.yml site.yml
+```
+
+Expect the first preview to predict one file change without creating `app.conf`. The first actual
+run should change the template task, assert the contents, and run the report handler. The second
+actual run should report `changed=0` and not notify that handler. Inspect `app.conf`; it should
+contain `message=hello-from-lab`.
+
+## 5. Change one input
+
+Change the role argument in `site.yml` to another non-secret string. Predict which task and handler
+will change, then preview and apply again. The default remains reusable; the explicit role argument
+selects this play's value. A second run should again converge without changes.
+
+## Failure, verification, and cleanup
+
+An unexpected remote connection, sudo prompt, or target outside the temporary directory means the
+selected configuration differs from this lab: stop and inspect it. If the assertion fails, inspect
+the rendered non-secret file and variable mapping rather than hiding the failure.
+
+Keep or remove the known temporary directory through your normal file manager. The exercise proves
+local role mechanics, not remote SSH access, service restart safety, cluster readiness, or backup
+restoration. Continue with [check-mode reasoning](/docs/infrastructure/ansible/concepts/idempotency-and-check-mode).

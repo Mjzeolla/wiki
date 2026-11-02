@@ -1,0 +1,50 @@
+---
+title: 'OpenTofu'
+description: 'Learn how HCL, providers, modules, state, and saved plans cooperate before changing infrastructure.'
+tags:
+  - opentofu
+  - infrastructure
+  - iac
+status: growing
+sources:
+  - https://opentofu.org/docs/intro/
+  - https://opentofu.org/docs/language/
+  - https://opentofu.org/docs/cli/commands/
+---
+
+OpenTofu is an infrastructure-as-code tool. You describe resources in configuration, it compares
+that configuration with recorded ownership and provider observations, and it proposes operations.
+The CLI executable is `tofu`. It originates from Terraform, but provider, backend, and language
+compatibility should be checked for the versions you actually use rather than assumed indefinitely.
+See the [OpenTofu introduction](https://opentofu.org/docs/intro/).
+
+A configuration is not a shell script. Filenames such as `main.tf` and `variables.tf` organize one
+module for humans; source-line order is not the execution order of the resource dependency graph.
+Creating a VM through a provider and configuring software inside it are also distinct tasks.
+
+## The questions a plan answers
+
+| Question                                  | Relevant input                                   |
+| ----------------------------------------- | ------------------------------------------------ |
+| What should exist?                        | Resource/module declarations and variable values |
+| Which objects do we own?                  | State and resource addresses                     |
+| What exists according to the API?         | Provider observations and refresh behavior       |
+| What actions would reduce the difference? | The execution plan                               |
+| What will actually be changed?            | The reviewed plan selected for apply             |
+
+A plan can include drift you did not cause. Review the full change, not only the resource you edited.
+Keep saved plans protected because their contents can include secrets even when terminal output is redacted.
+
+## Read in order
+
+- [HCL and values](/docs/infrastructure/opentofu/concepts/hcl-and-values): blocks, types, locals, expressions, and input files.
+- [Providers and resources](/docs/infrastructure/opentofu/concepts/providers-and-resources): API ownership and resource lifecycle.
+- [Modules and dependency graphs](/docs/infrastructure/opentofu/concepts/modules-and-dependencies): explicit inputs and outputs.
+- [State, identity, and drift](/docs/infrastructure/opentofu/state/identity-and-drift): why names, addresses, and remote IDs differ.
+- [Backends and locking](/docs/infrastructure/opentofu/state/backends-and-locking): coordinating writers and preserving ownership.
+- [Sensitive data and recovery](/docs/infrastructure/opentofu/state/security-and-recovery): redaction, encryption, and independent restoration.
+- [Commands](/docs/infrastructure/opentofu/commands): what each CLI invocation does and what evidence it produces.
+
+The [local OpenTofu lab](/docs/playbooks/operations/infrastructure/local-opentofu-lab) is a complete executable example using the built-in
+`terraform_data` resource. It creates no VM and needs no cloud account. Learn the lifecycle there,
+then map those mechanics onto your real provider and environment module.

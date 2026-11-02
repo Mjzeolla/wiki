@@ -1,0 +1,4 @@
+{
+  "title": "Operations Playbooks",
+  "pages": ["index", "infrastructure", "gitops"]
+}

@@ -1,0 +1,4 @@
+{
+  "title": "OpenTofu",
+  "pages": ["index", "concepts", "state", "commands", "troubleshooting"]
+}

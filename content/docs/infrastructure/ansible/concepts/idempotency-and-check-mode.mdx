@@ -1,0 +1,54 @@
+---
+title: 'Idempotency and Check Mode'
+description: 'Separate predicted changes, actual convergence, changed reporting, and independent verification.'
+tags:
+  - ansible
+  - idempotency
+  - validation
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_error_handling.html
+---
+
+An idempotent operation can be repeated and leave the same intended state. In configuration
+management, this usually means a second run reports no unnecessary changes once the target already
+satisfies the declaration. It is a property of the operations and inputs, not a guarantee conferred
+by writing YAML.
+
+A package module requesting a specific installed state can inspect and converge it. A shell command
+that appends a line every run creates duplicates unless guarded or replaced by an appropriate module.
+A command that reports `changed` unconditionally also creates noise even when its output is stable.
+
+## What check mode predicts
+
+`ansible-playbook --check --diff` asks supported actions to predict changes and show selected diffs.
+Some actions do not support meaningful simulation, and later tasks may rely on files or facts that
+would have been created by earlier tasks. Check mode on a blank machine can therefore differ from
+check mode on a previously converged one.
+
+Read [check-mode support](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html)
+for the modules in use. Task-level settings can deliberately force an operation to execute despite
+check mode, so read the playbook before calling any preview universally read-only.
+
+## A preview is not a saved plan
+
+Ansible apply reads the playbook and current host context again. It does not execute a saved
+OpenTofu-style artifact from the earlier preview. Changes to variables, host state, dependencies,
+or source between runs can change the result. Keep review and execution close enough that their
+assumptions remain valid.
+
+## Build an evidence ladder
+
+1. Syntax/lint checks show source can load and follows selected rules.
+2. Inventory/input assertions show the intended targets and values resolve.
+3. Connectivity checks show the selected account/module runtime is reachable.
+4. Check mode predicts supported changes.
+5. Apply converges actual targets.
+6. A second run and service checks reveal drift and effective behavior.
+
+No single step replaces the others. Verification itself can have side effects: a backup-validation
+task may create a snapshot even though its purpose is checking a system. Label that behavior clearly.
+
+A useful first exercise is the [local file lab](/docs/playbooks/operations/infrastructure/local-ansible-lab): observe changed counts and
+handler execution, then change one input and predict which tasks should report changes next.

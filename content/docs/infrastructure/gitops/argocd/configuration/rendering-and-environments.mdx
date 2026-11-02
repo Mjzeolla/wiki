@@ -1,0 +1,55 @@
+---
+title: 'Rendering and Environments'
+description: 'Understand source paths, Helm chart/value selection, Kustomize overlays, and immutable image promotion.'
+tags:
+  - argo-cd
+  - helm
+  - kustomize
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/helm/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+---
+
+An Application's source determines how manifests are produced. A Git directory may contain plain
+manifests or a Kustomization. A Helm source selects a chart repository/name/version and values.
+A path existing in Git is not enough; it must be selected by an Application that is itself deployed.
+
+## Kustomize sources
+
+An overlay composes a base with environment-specific resources, transformations, and patches.
+Render the actual overlay locally, then compare its resources to the Application/project contract.
+Reading only the base misses namespaces, image pins, ingress, replicas, and policies added later.
+The wiki's [Kustomize guide](/docs/infrastructure/kubernetes/configuration/kustomize) explains the composition boundary.
+
+## Helm sources under Argo CD
+
+Argo CD uses Helm to render templates, then manages the resulting Kubernetes objects. The lifecycle
+is not the same as an operator-owned Helm release managed through independent `helm upgrade` calls.
+Do not assume `helm list` is the authoritative inventory of Argo CD-rendered chart workloads.
+See [Helm integration](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
+
+Values are chart-specific. Verify the exact chart version and schema; unknown or misplaced values
+can be ignored or behave differently from similarly named options in another chart. Randomly generated
+values or non-deterministic templates can also create repeated diffs. Treat rendered Secrets as sensitive.
+
+## Promotion selects bytes; rendering selects objects
+
+A build publishes an immutable container digest. An environment overlay then selects that digest.
+Promoting a tested image should not rebuild source and assume the result is identical. A chart
+version pin and a container image digest identify different artifacts and need separate review.
+
+The watched branch/revision controls which source Argo CD sees. A local successful render is useful
+but does not prove the same content exists remotely, the remote chart can be fetched, or the controller
+has permissions to apply the result.
+
+Keep environments explicit and protect their credentials/data independently. A staging overlay and a
+production overlay can share a base without sharing a database password or namespace. Review the
+rendered diff and actual destination permissions during each promotion.
+
+## Practice Helm rendering
+
+The [Helm learning path](/docs/infrastructure/kubernetes/configuration/helm) explains chart structure,
+values, and release ownership. Its [Argo CD example](/docs/infrastructure/kubernetes/configuration/helm/examples/argocd)
+uses a complete Git-hosted chart, a restricted AppProject, and automated synchronization.

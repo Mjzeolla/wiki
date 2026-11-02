@@ -1,0 +1,37 @@
+---
+title: 'Example: Build a Reusable Role'
+description: 'Trace defaults, caller inputs, templates, verification, and handlers through a tested local role.'
+tags: ['ansible', 'examples']
+status: 'growing'
+sources:
+  [
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html',
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html',
+  ]
+---
+
+Follow the [complete local convergence lab](/docs/playbooks/operations/infrastructure/local-ansible-lab). It supplies every inventory, playbook, role, task, template, and handler file and writes only inside its temporary directory. This page explains what to observe as you work through it.
+
+## Trace the interface
+
+```text
+role default: lab_config_message = hello
+  -> play argument: lab_config_message = hello-from-lab
+  -> template: message={{ lab_config_message }}
+  -> app.conf: message=hello-from-lab
+  -> assertion reads the actual file
+```
+
+The role owns its `lab_config_*` interface. The caller chooses a value; it does not need to know how the role renders or verifies the file. A template filename alone does not decide its destination: the task's `dest` parameter does.
+
+## Predict the notifications
+
+On the first real run, the template creates the file and reports a change. Its `notify` schedules the handler, which prints a harmless message. On a second run with the same inputs, the template reports no change and does not notify the handler.
+
+Change the message, run again, and predict both the file difference and the notification. Repeated notifications of the same handler are deduplicated within the handler execution cycle. The example intentionally avoids restarting a real service.
+
+## Understand the verification boundary
+
+The lab skips file readback in check mode because a predicted file may not exist yet. Preview demonstrates a planned template change; the real run's assertion demonstrates the resulting content. Neither verifies a real web server, SSH access, firewall safety, or cluster availability.
+
+See [templates and handlers](/docs/infrastructure/ansible/concepts/templates-and-handlers) for the general mechanism.

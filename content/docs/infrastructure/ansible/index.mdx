@@ -1,0 +1,59 @@
+---
+title: 'Ansible'
+description: 'Understand inventory-driven host configuration, ordered playbook execution, reusable roles, and verification.'
+tags:
+  - ansible
+  - automation
+  - configuration-management
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/getting_started/index.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html
+---
+
+Ansible automates configuration and operations by executing tasks for selected hosts. A controller
+loads inventory and playbooks, connects using an appropriate transport, and invokes modules that
+inspect or change managed systems. The common Linux model uses SSH rather than a permanent
+Ansible agent. Local and other connection types also exist.
+
+OpenTofu usually owns the lifecycle of a VM; Ansible usually owns software and configuration inside
+it. Those are chosen responsibilities, not an automatic integration. A new VM can exist before
+Ansible has ever connected. See the [Ansible getting-started guide](https://docs.ansible.com/projects/ansible/latest/getting_started/index.html).
+
+## What a playbook actually does
+
+A play selects hosts, sets execution context, and runs ordered tasks/roles. A task invokes a module
+with parameters. The module's result reports facts such as whether it changed the target. Handlers
+are tasks notified by changes, commonly to reload or restart services.
+
+```text
+Configuration selection -> inventory and variables -> play selects hosts
+  -> facts and ordered tasks/roles -> module execution -> notifications/handlers
+  -> independent verification of the resulting system
+```
+
+This differs from OpenTofu's resource graph and saved-plan lifecycle. Ansible check mode predicts
+supported operations; it does not produce a saved artifact that a later apply executes unchanged.
+
+## Learning path
+
+1. [Controller and connections](/docs/infrastructure/ansible/concepts/controller-and-connections) explain where code runs and how access works.
+2. [Inventory and groups](/docs/infrastructure/ansible/configuration/inventory-and-groups) explain host membership and connection addresses.
+3. [Variables and precedence](/docs/infrastructure/ansible/configuration/variables-and-precedence) explain how a host receives its effective settings.
+4. [Plays, tasks, and roles](/docs/infrastructure/ansible/concepts/plays-tasks-and-roles) explain the execution structure.
+5. [Templates and handlers](/docs/infrastructure/ansible/concepts/templates-and-handlers) connect file changes to service actions.
+6. [Idempotency and check mode](/docs/infrastructure/ansible/concepts/idempotency-and-check-mode) explain what preview and repeat runs can prove.
+7. [Vault and runtime secrets](/docs/infrastructure/ansible/configuration/vault-and-runtime-secrets) separate encryption from access control and reload behavior.
+8. Use the [command reference](/docs/infrastructure/ansible/commands) and [troubleshooting guide](/docs/infrastructure/ansible/troubleshooting).
+
+The [local convergence lab](/docs/playbooks/operations/infrastructure/local-ansible-lab) needs no remote hosts or sudo. It creates a
+small configuration file, verifies its contents, and demonstrates a second unchanged run.
+
+## Practice and terminology
+
+Use the [examples](/docs/infrastructure/ansible/examples) to test your understanding locally,
+then consult the [Ansible glossary](/docs/infrastructure/ansible/glossary) for short definitions.
+Read [facts and registered results](/docs/infrastructure/ansible/concepts/facts-and-registered-results),
+[conditions and loops](/docs/infrastructure/ansible/concepts/conditions-and-loops), and
+[change reporting and failure](/docs/infrastructure/ansible/concepts/change-and-failure)
+before introducing imperative commands or branching behavior into a role.

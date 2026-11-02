@@ -1,0 +1,85 @@
+---
+title: Pods and Workloads
+description: Choose controllers for applications and understand replicas, rollouts, probes, and resources.
+tags:
+  - kubernetes
+  - k8s
+status: growing
+sources:
+  - https://kubernetes.io/docs/concepts/workloads/pods/
+  - https://kubernetes.io/docs/concepts/workloads/controllers/
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - https://kubernetes.io/docs/concepts/workloads/pods/probes/
+  - https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
+  - https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+---
+
+A **Pod** is the smallest deployable unit Kubernetes schedules. It holds one or more cooperating
+containers on the same node. Containers in a Pod share networking and can share mounted volumes.
+A container is a running process environment; a Pod is the Kubernetes unit containing it.
+
+Pods are replaceable. A container can restart inside a Pod, while a failed or deleted Pod can be
+replaced by a controller with a new Pod and identity. Avoid treating a Pod's IP or writable container
+filesystem as a durable application address or data store. See
+[Pods](https://kubernetes.io/docs/concepts/workloads/pods/).
+
+## Which workload object should I use?
+
+| Object      | Purpose                                                                  | Typical use                                 |
+| ----------- | ------------------------------------------------------------------------ | ------------------------------------------- |
+| Deployment  | Maintains interchangeable Pods and manages rollouts through ReplicaSets  | Web frontend or stateless API               |
+| ReplicaSet  | Maintains a requested number of matching Pods                            | Usually managed by a Deployment             |
+| StatefulSet | Maintains stable Pod identities and supports per-Pod persistent storage  | Stateful service needing distinct instances |
+| DaemonSet   | Runs a Pod on each eligible node                                         | Node log collector or monitoring agent      |
+| Job         | Runs work toward successful completion, retrying according to its policy | One-time batch task                         |
+| CronJob     | Creates Jobs on a schedule                                               | Periodic report or maintenance task         |
+
+A StatefulSet does not implement database replication or backups. A DaemonSet respects node
+eligibility rather than guaranteeing a Pod on every machine. Scheduled and retried tasks should
+handle duplicate execution; a CronJob is not an exactly-once scheduler.
+See [workload management](https://kubernetes.io/docs/concepts/workloads/controllers/).
+
+## Deployment, replicas, and rollout
+
+A Deployment describes a Pod template and desired replica count. Its ReplicaSets create and
+maintain Pods. Changing the template, such as its container image, triggers a rollout. Changing
+only the replica count scales the workload. Rolling updates can temporarily run both old and new
+versions, so application and schema compatibility matter.
+
+Deleting a managed Pod usually causes a replacement. Change the owning Deployment to change
+lasting behavior. A rollback restores a prior Pod template; it does not undo database changes.
+See [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/).
+
+## Requests and limits
+
+A **request** describes resources used for scheduling; a **limit** constrains resource consumption.
+CPU limits can throttle execution. Memory limits can result in an out-of-memory kill. `100m` CPU
+means one tenth of a CPU; `128Mi` is 128 mebibytes of memory. Requests are not dedicated physical
+cores. Insufficient available requested capacity can leave a Pod Pending.
+See [resource management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+
+## Health probes
+
+| Probe     | Question                              | Effect of repeated failure                                |
+| --------- | ------------------------------------- | --------------------------------------------------------- |
+| Readiness | Can this container serve traffic now? | Marks the Pod unready; normal Service traffic excludes it |
+| Liveness  | Should this container be restarted?   | Restarts the container                                    |
+| Startup   | Has startup completed?                | Restarts the container after the failure threshold        |
+
+A startup probe delays readiness and liveness probing until startup succeeds. A readiness failure
+alone does not restart a container. Avoid using an external dependency outage as a liveness failure
+unless restarting actually helps. See [probes](https://kubernetes.io/docs/concepts/workloads/pods/probes/).
+
+## Scaling and disruption
+
+A HorizontalPodAutoscaler (HPA) adjusts a workload's replica count using metrics and configured bounds.
+It requires a working metrics source; CPU utilization targets generally depend on CPU requests.
+See [horizontal autoscaling](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/).
+
+A PodDisruptionBudget (PDB) limits supported voluntary evictions, such as during node drains.
+It cannot prevent hardware failures and does not control a Deployment's rolling-update strategy.
+Replicas also need suitable placement and sufficient capacity to improve availability.
+See [disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/).
+
+Continue with [Services](/docs/infrastructure/kubernetes/services-and-networking) and [configuration and storage](/docs/infrastructure/kubernetes/configuration-storage-and-access).

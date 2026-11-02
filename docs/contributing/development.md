@@ -37,9 +37,7 @@ make hooks         # reinstall Git hooks
 ```
 
 The production build validates rendering of the generated route map. Local content validation
-catches missing pages and anchors referenced by Markdown. The route-manifest validator derives
-routes from MDX files and rejects invalid redirect destinations, duplicates, chains, and redirects
-that shadow live pages. Lychee checks HTTP and HTTPS URLs only; Fumadocs route links are intentionally
+catches missing pages and anchors referenced by Markdown. Lychee checks HTTP and HTTPS URLs only; Fumadocs route links are intentionally
 left to the content-aware validator rather than interpreted as literal filesystem paths. External
 checks run outside `make validate` because remote sites can be unavailable or rate limited
 independently of this repository.

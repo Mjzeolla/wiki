@@ -1,0 +1,46 @@
+---
+title: 'Troubleshoot Argo CD by Layer'
+description: 'Separate source access, rendering, project admission, synchronization, scheduling, and application health.'
+tags:
+  - argo-cd
+  - troubleshooting
+  - kubernetes
+status: growing
+sources:
+  - https://argo-cd.readthedocs.io/en/stable/faq/
+  - https://argo-cd.readthedocs.io/en/stable/user-guide/projects/
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/health/
+---
+
+Follow the delivery chain in order. A repository authentication problem is not fixed by restarting
+application pods, and a ready application pod does not prove an external hostname works.
+
+| Failing stage      | Evidence                                     | Typical cause classes                                           |
+| ------------------ | -------------------------------------------- | --------------------------------------------------------------- |
+| Source access      | Application conditions and repository access | Wrong URL/revision, credentials, SSH trust, network             |
+| Rendering          | Render error and same revision's source      | Missing path, invalid Kustomization, chart/value mismatch       |
+| Project permission | Denied source/destination/kind               | Rendered namespace differs from allowed destination             |
+| Resource admission | API/webhook error                            | Missing CRD, invalid schema, policy rejection                   |
+| Scheduling/startup | Pod/claim events                             | Capacity, image pulls, secrets, storage, permissions            |
+| Runtime health     | Probe failures, logs, resource conditions    | Application configuration or dependent service failure          |
+| Client behavior    | DNS/TLS/routing and actual requests          | Missing route, wrong Service endpoints, inaccessible dependency |
+
+## Prove you are examining the intended revision
+
+Read the Application's source and status, not only the latest commit in your local checkout. A
+healthy old revision may still run while source access blocks the next one. Reproduce a rendering
+error against the selected remote revision or a known matching checkout.
+
+## Fix the correct owner
+
+If a parent or ApplicationSet generates the Application, edit that source rather than a live child
+field. If another Kubernetes controller owns a field, investigate ownership before expanding ignored
+differences. If a project denies an unexpected namespace, compare the overlay and destination rather
+than granting every namespace as a diagnostic shortcut.
+
+A manual sync of unchanged invalid source usually repeats the same failure. Retrying can help a
+transient dependency race but cannot create a missing provider-side password or restore lost data.
+
+Capture the revision, Application/project, failed resource, non-sensitive error, and intended change.
+Preserve data and artifacts before pruning/replacement. Use the
+[rollback playbook](/docs/playbooks/operations/gitops/rollback-and-recovery) when the desired remediation changes the deployed version.

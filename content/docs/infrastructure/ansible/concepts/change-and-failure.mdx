@@ -1,0 +1,30 @@
+---
+title: 'Change Reporting and Failure'
+description: 'Use changed_when, failed_when, assertions, and recovery without hiding errors.'
+tags: ['ansible', 'concepts']
+status: 'growing'
+sources:
+  ['https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_error_handling.html']
+---
+
+## Report what the operation means
+
+A command module normally reports a change when it executes. A read-only probe should declare `changed_when: false`; this changes reporting and handler notification, not what the command actually does. It is not a safety sandbox.
+
+```yaml
+- name: Read a known file without reporting a change
+  ansible.builtin.command:
+    argv: [cat, /etc/os-release]
+  register: example_os_release
+  changed_when: false
+```
+
+Do not apply `failed_when: false` or `ignore_errors: true` broadly to get a green run. If a tool uses a documented nonzero result for an expected outcome, define the accepted return codes precisely. Use `assert` to express relationships, types, and ranges before changing hosts.
+
+## Failure and recovery
+
+By default, a task failure stops further ordinary work on that host while other hosts can continue. `any_errors_fatal` and batch policies change the wider execution contract. List entries in `failed_when` combine with logical AND; use an explicit OR expression when any condition should fail.
+
+A failed later task can prevent a previously notified handler from running on that host. A `block` with `rescue` can perform recovery, and `always` can perform cleanup, but a successful rescue can turn the original failure into a recovered outcome. Verify the recovery and explicitly fail when the overall operation must remain unsuccessful.
+
+See [Ansible error handling](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_error_handling.html). Practice with harmless observations in the [results example](/docs/infrastructure/ansible/examples/results-and-conditions).

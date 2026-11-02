@@ -1,0 +1,53 @@
+---
+title: 'Execution and Targeting Commands'
+description: 'Preview supported changes and apply them deliberately while understanding limits, tags, and failure boundaries.'
+tags:
+  - ansible
+  - commands
+  - operations
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/cli/ansible-playbook.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_strategies.html
+---
+
+From the intended project root, with a verified real inventory and required access:
+
+```bash
+ansible-playbook -i inventory.yml site.yml --check --diff
+```
+
+Read the selected tasks for check-mode exceptions and secret-bearing diffs. This predicts supported
+changes; it is not a saved executable plan. When the preview, inputs, and access are understood,
+the following executes the playbook and changes selected hosts:
+
+```bash
+ansible-playbook -i inventory.yml site.yml
+```
+
+There is no universal “are you sure?” prompt before a playbook changes files/services. If a wrapper
+adds confirmation, document that project behavior separately from the CLI.
+
+## Limits and tags can remove prerequisites
+
+`--limit web-01` intersects with each play's host pattern. A play targeting a different group can
+then have no selected hosts. `--tags configuration` selects tagged portions but can omit setup that
+those tasks assume. Use them for an understood maintenance operation, not as shortcuts around a
+failing full bootstrap.
+
+A playbook's `serial` settings control batch execution within that play. They do not automatically
+protect database quorum, implement backups, or transfer leadership safely. Verify service-level
+disruption constraints alongside Ansible ordering.
+
+## Failure and retry
+
+After an error, identify which hosts and tasks already changed. Rerunning an idempotent playbook
+can be appropriate, but it is not a transaction rollback. Starting halfway through with skipped
+setup can produce a new failure or inconsistent state.
+
+Verify the affected service and run relevant postconditions. Use extra verbosity only when it adds
+discriminating evidence; review output for credentials/operational context before sharing. Consult
+[check mode](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_checkmode.html)
+and [execution strategy](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_strategies.html)
+for the installed version and modules.

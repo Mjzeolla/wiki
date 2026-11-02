@@ -1,0 +1,87 @@
+---
+title: 'Example: Request NFS-backed Storage'
+description: 'Read a complete StorageClass and PVC without confusing claim binding with application persistence.'
+tags: ['kubernetes', 'storage', 'nfs', 'examples']
+status: 'growing'
+sources:
+  [
+    'https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md',
+    'https://kubernetes.io/docs/concepts/storage/persistent-volumes/',
+  ]
+---
+
+## Prerequisites
+
+This is an illustrative lab configuration. Before applying it, use an authorized disposable cluster with the NFS CSI driver installed, a namespace `storage-lab`, and an NFS export configured for the actual node addresses. Replace the documentation address and export path with reviewed lab values. The example does not create an NFS server.
+
+Create `storageclass.yaml`:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: learning-nfs
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: 192.0.2.50
+  share: /exports/learning
+  subDir: ${pvc.metadata.namespace}/${pvc.metadata.name}
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+mountOptions:
+  - nfsvers=4.1
+  - hard
+```
+
+`192.0.2.50` is a documentation address and must be replaced. The `subDir` expressions are placeholders interpreted by this driver, not shell substitutions to expand on your workstation. Review the [parameter contract](https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md) against the installed release.
+
+Create `claim.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workspace
+  namespace: storage-lab
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: learning-nfs
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+The claim names the class and requests a capacity and access mode. It does not itself mount files inside a container. A workload must reference this claim as a volume and mount it at the intended path.
+
+This Pod-spec fragment illustrates that connection; it is not a complete Pod to apply:
+
+```yaml
+volumes:
+  - name: workspace
+    persistentVolumeClaim:
+      claimName: workspace
+containers:
+  - name: worker
+    volumeMounts:
+      - name: workspace
+        mountPath: /workspace
+```
+
+## Inspect the actual allocation
+
+After the reviewed resources have been applied through the lab's approved owner:
+
+```bash
+kubectl -n storage-lab get pvc workspace
+kubectl -n storage-lab describe pvc workspace
+kubectl get pv
+```
+
+For this immediate-binding example, successful provisioning should move the claim to `Bound`. Inspect the bound PV's actual CSI volume handle and server attributes. Do not guess its name from the claim name.
+
+`Bound` does not prove a Pod can mount or write the directory. Use an approved workload image and security context to write a synthetic marker, replace the Pod while preserving the claim, and read that same marker. Then test permissions and intended node movement independently. Record the actual namespace, claim, PV, driver version, export, and result.
+
+## Cleanup has a storage lifecycle
+
+Stop the lab workload before retiring its claim. With `Retain`, inspect and deliberately handle the released PV and backing data; do not assume deleting the claim removed either. Driver deletion parameters and administrative NAS actions are separate paths. Never use a shared or production export for a destructive cleanup exercise.

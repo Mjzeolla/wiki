@@ -1,0 +1,10 @@
+{
+  "title": "Argo CD Concepts",
+  "pages": [
+    "index",
+    "applications-and-projects",
+    "app-of-apps",
+    "sync-health-and-drift",
+    "declarative-control-loop"
+  ]
+}

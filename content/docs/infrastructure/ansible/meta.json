@@ -1,0 +1,12 @@
+{
+  "title": "Ansible",
+  "pages": [
+    "index",
+    "concepts",
+    "configuration",
+    "commands",
+    "troubleshooting",
+    "examples",
+    "glossary"
+  ]
+}

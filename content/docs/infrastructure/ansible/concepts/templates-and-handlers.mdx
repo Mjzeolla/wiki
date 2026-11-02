@@ -1,0 +1,60 @@
+---
+title: 'Templates and Handlers'
+description: 'Connect rendered configuration changes to explicit, bounded service actions.'
+tags:
+  - ansible
+  - templates
+  - handlers
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/template_module.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html
+---
+
+A template renders controller-side Jinja input using the selected host's variable context and writes
+the result to the requested target path. It can supply ownership and mode. Rendering valid text
+still does not prove the application accepts it, so use supported validation before replacement
+when the service provides an appropriate configuration-check command.
+
+This example is illustrative and requires a real `web_service` role and service:
+
+```yaml
+- name: Render web service configuration
+  ansible.builtin.template:
+    src: service.conf.j2
+    dest: /etc/web-service/service.conf
+    owner: root
+    group: root
+    mode: '0640'
+  notify: Restart web service
+```
+
+A corresponding handler might use `ansible.builtin.service` with the service's real name and
+`state: restarted`. That action changes the target and can interrupt requests. It is not executed
+merely because the file is in a role's `templates` directory.
+
+## Notification is explicit
+
+A changed notifying task schedules its handler. A handler with the right-looking name but no
+notification is not automatically discovered. Several notifications to the same handler can be
+coalesced during a handler run; handler order and flush points are governed by the play structure.
+See [handler semantics](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html).
+
+A task reporting unchanged normally sends no notification. If a service still needs restarting,
+ask why: was an external process changed, did the task's changed logic hide a real update, or is the
+runtime intentionally independent of the file? Forcing every task to report changed can hide that
+ownership problem and cause avoidable restarts.
+
+## Secrets and diffs
+
+Templates containing credentials can leak through diff output even if the source template contains
+only variable names. Set appropriate no-log/diff controls for secret-bearing operations, restrict
+file permissions, and avoid printing rendered contents during validation. Encryption of the source
+variable does not protect all of its later representations.
+
+## Verify the result
+
+After the handler, check service status and the behavior that depends on the configuration. A
+process can restart successfully while binding the wrong port or rejecting requests. The local
+[Ansible lab](/docs/playbooks/operations/infrastructure/local-ansible-lab) uses a harmless file and an assertion to demonstrate change
+notification and repeat-run behavior without restarting a host service.

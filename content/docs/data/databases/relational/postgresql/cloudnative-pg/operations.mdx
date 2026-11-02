@@ -1,0 +1,42 @@
+---
+title: 'Operate CloudNativePG Databases'
+description: 'Separate database availability, storage durability, credential delivery, upgrades, and recoverable backups.'
+tags: ['postgresql', 'cloudnative-pg', 'operations']
+status: 'growing'
+sources:
+  [
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/storage.md',
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/backup.md',
+  ]
+---
+
+## Storage is a database dependency
+
+CloudNativePG needs writable, durable storage with suitable ownership, latency, and write guarantees. A bound claim or a successful generic file mount does not establish those database requirements. Benchmark the selected topology and verify clean restart and recovery with representative writes. See [storage guidance](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/storage.md).
+
+For NFS-backed claims, verify export identity mapping, UID/GID behavior, directory ownership, network paths, and server-side durable-write settings. Several replica PVCs on the same NAS remain dependent on that NAS. The [NFS CSI guide](/docs/infrastructure/kubernetes/storage/csi-driver-nfs) explains the lower layer.
+
+## Diagnose from the failing layer
+
+| Symptom                                      | Inspect                                                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `Cluster` kind is unknown                    | Operator CRD establishment and API version                                                           |
+| Cluster exists but no instance becomes ready | Operator conditions/logs, scheduling, resources, images, and admission                               |
+| PVC Pending                                  | StorageClass, provisioner, binding mode, and claim events                                            |
+| Volume mounts but initialization fails       | Database directory ownership, permissions, filesystem and PostgreSQL logs                            |
+| Database ready but clients cannot connect    | Service endpoints, network policy, DNS, TLS, role credentials, and pg_hba configuration              |
+| Recovery fails                               | Actual backup assets, WAL availability, plugin configuration, credentials, and version compatibility |
+
+## Credentials and upgrades have owners
+
+An application's database role should have the permissions it needs, with secret delivery and rotation handled deliberately. Kubernetes namespace separation does not automatically create separate databases or SQL roles for every application. Read the installed operator's supported bootstrap and role-management APIs before attempting ongoing role changes.
+
+Upgrade the operator chart and PostgreSQL image as separate reviewed artifacts with compatibility checks. A Git revert can restore an older declaration without reversing a PostgreSQL major upgrade or application migration. Define a forward recovery or restore path appropriate to the exact change.
+
+## Backups must be configured and restored
+
+CloudNativePG can integrate with supported backup mechanisms, but operator installation does not create a complete backup system. The `1.30` documentation describes CNPG-I plugins, including the Barman Cloud Plugin, and a transition away from older native object-store integration. Review the selected version's supported mechanism rather than copying an old backup stanza. See [backup guidance](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/backup.md).
+
+Continuous recovery requires the appropriate base backup and WAL archive coverage, retention, credentials, and a tested restore procedure. Volume snapshots have their own database-consistency and storage-dependency assumptions. K3s/etcd snapshots store Kubernetes state, not the complete database files on PVCs.
+
+A useful recovery drill restores into a separate authorized namespace/storage location, verifies a known SQL record, checks recovery time and target, and proves that clients can reconnect. Treat replica failover, volume remounting, and independent backup restoration as separate tests.

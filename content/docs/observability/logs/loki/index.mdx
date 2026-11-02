@@ -1,0 +1,140 @@
+---
+title: Loki
+description: Kubernetes log aggregation, label design, LogQL, and integration with Grafana and OpenTelemetry.
+tags:
+  - loki
+  - observability
+  - kubernetes
+status: growing
+sources:
+  - https://grafana.com/docs/loki/latest/get-started/overview/
+  - https://grafana.com/docs/loki/latest/get-started/labels/
+  - https://grafana.com/docs/loki/latest/query/log_queries/
+  - https://grafana.com/docs/loki/latest/send-data/otel/
+  - https://grafana.com/docs/loki/latest/operations/authentication/
+  - https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/
+  - https://grafana.com/docs/loki/latest/send-data/promtail/
+  - https://grafana.com/licensing/
+---
+
+Loki stores and queries logs from many workloads in one place. It is useful when an incident spans
+multiple pods, a pod has restarted, or you need to compare application events with a metrics spike.
+[Grafana](/docs/observability/dashboards/grafana) provides the exploration UI; Loki owns the log backend.
+
+## How it fits with metrics and traces
+
+| Component                                                  | Responsibility                                                    |
+| ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| [Prometheus](/docs/observability/metrics/prometheus)       | Metrics such as error rates, CPU usage, and latency distributions |
+| Loki                                                       | Timestamped log events and LogQL queries                          |
+| Tempo                                                      | Distributed traces following requests across services             |
+| [OpenTelemetry](/docs/observability/tracing/opentelemetry) | Instrumentation and transport of telemetry to backends            |
+| Grafana                                                    | Query and visualize the configured backends                       |
+
+Loki indexes labels identifying log streams rather than indexing every word in each log message.
+It stores compressed log chunks and uses the selected streams and time range to narrow searches.
+Broad content searches can still scan substantial data. This makes label design part of query
+performance. See the [Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/).
+
+## Kubernetes collection
+
+Read the [Kubernetes fundamentals](/docs/infrastructure/kubernetes) for Pods, DaemonSets, Services, and Namespaces.
+
+A possible topology for a small cluster is:
+
+```text
+Pod stdout/stderr → node log collector → Loki ← Grafana Explore
+Application OTLP logs → OpenTelemetry Collector → Loki
+Application /metrics ← Prometheus ← Grafana dashboards
+```
+
+Grafana Alloy can collect pod logs; a node-based collector is commonly deployed as a DaemonSet.
+Applications can instead emit OTLP logs through an OpenTelemetry Collector. Choose the collection
+path deliberately so the same event is not ingested twice. Adding Loki alone does not collect logs,
+and adding an OpenTelemetry Collector does not automatically instrument applications.
+
+Loki supports native OTLP log ingestion through the Collector's `otlphttp` exporter. The exporter
+endpoint uses Loki's `/otlp` base path; the exporter appends the signal path. Native OTLP ingestion
+requires structured metadata support. Resource attributes become index labels or structured
+metadata according to Loki's mapping configuration. Verify those mappings before copying queries
+between collection methods. See [OTel ingestion](https://grafana.com/docs/loki/latest/send-data/otel/).
+
+For a new setup, use a supported collector such as Alloy or OpenTelemetry Collector. Promtail
+reached end of life on March 2, 2026; old tutorials using it need updating. See the
+[Promtail lifecycle notice](https://grafana.com/docs/loki/latest/send-data/promtail/).
+
+## Label design
+
+Start with a small set of bounded labels such as cluster, environment, namespace, and service.
+Each unique combination creates a stream. Request IDs, trace IDs, user IDs, and raw URLs can create
+many streams and should generally remain in the log body or structured metadata. Pod names also
+change frequently; avoid promoting them to index labels by default without considering volume.
+
+A label such as `service_name` is useful for selecting an application. An individual `trace_id` is
+useful for correlating an event with a trace, but is a poor index label. Keep credentials and tokens
+out of both messages and metadata. Follow the
+[label guidance](https://grafana.com/docs/loki/latest/get-started/labels/).
+
+## First LogQL queries
+
+These illustrative queries assume the collector has supplied `namespace` and `service_name` labels,
+and the application emits JSON with a `level` field. Adapt names to the actual ingestion mapping;
+OTLP-derived Kubernetes attributes may use names such as `k8s_namespace_name` instead.
+
+Select one service's logs:
+
+```text
+{namespace="apps", service_name="example-api"}
+```
+
+Filter messages containing a case-sensitive substring:
+
+```text
+{namespace="apps", service_name="example-api"} |= "timeout"
+```
+
+Parse JSON and select error events:
+
+```text
+{namespace="apps", service_name="example-api"} | json | __error__="" | level="error"
+```
+
+The selector narrows streams, `|=` filters message content, and `| json` extracts fields at query
+time. Filtering `__error__` excludes parsing failures from this example; remove that filter when
+investigating malformed logs. Use a narrow time range first. See the
+[LogQL reference](https://grafana.com/docs/loki/latest/query/log_queries/).
+
+## Storage and deployment choices
+
+For an initial homelab trial, a monolithic deployment keeps the number of moving parts small.
+Filesystem storage can support a proof of concept; durable object storage is a better starting
+point when retention and growth matter. Set an explicit retention policy and ingestion limits,
+and account for logs, indexes, write-ahead logs, and working space when sizing storage.
+
+This is a proposed starting point, not a statement that Loki is already deployed. Before writing
+Helm values, choose the chart and version, storage backend, persistence, collector, and retention.
+Use the current [monolithic Helm guide](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/)
+rather than assuming values from an older chart still apply.
+
+Loki does not include an authentication layer. Protect access through an authenticating gateway
+and network controls. A tenant header identifies a tenant; it does not authenticate a caller.
+See [Loki authentication](https://grafana.com/docs/loki/latest/operations/authentication/).
+
+## Open source and operating costs
+
+Loki is available under AGPLv3 and can be self-hosted without a software subscription. Grafana Cloud
+is a separate managed offering. Self-hosting still consumes compute, storage, and maintenance time;
+retention and ingestion volume determine much of that cost. See
+[Grafana licensing](https://grafana.com/licensing/).
+
+## What to verify in a trial
+
+- A known test event appears in Grafana Explore with the intended service and namespace.
+- Logs from every intended node arrive, including after a collector restart.
+- The same event is not duplicated through stdout and OTLP collection.
+- Stored events remain queryable after a Loki restart within the configured retention period.
+- Access controls restrict who can read or push logs.
+- Collector errors, ingestion failures, storage usage, and Loki health are monitored.
+
+Continue with the [observability overview](/docs/observability),
+[Grafana](/docs/observability/dashboards/grafana), and [Prometheus](/docs/observability/metrics/prometheus).

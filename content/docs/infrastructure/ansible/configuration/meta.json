@@ -1,0 +1,9 @@
+{
+  "title": "Ansible Configuration",
+  "pages": [
+    "index",
+    "inventory-and-groups",
+    "variables-and-precedence",
+    "vault-and-runtime-secrets"
+  ]
+}

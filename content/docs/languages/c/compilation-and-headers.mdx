@@ -1,0 +1,126 @@
+---
+title: C Compilation and Headers
+description: Preprocessing, include lookup, declarations, object files, linking, libraries, and build dependencies.
+tags:
+  - c
+  - compilation
+  - tooling
+status: growing
+sources:
+  - https://gcc.gnu.org/onlinedocs/cpp/
+  - https://gcc.gnu.org/onlinedocs/cpp/Include-Syntax.html
+---
+
+## From source to executable
+
+A typical native or embedded C build has several stages:
+
+1. The preprocessor expands directives such as `#include`, `#define`, and conditional compilation.
+2. The compiler translates each preprocessed `.c` file into an object file.
+3. The linker combines object files and libraries, resolves symbol references, and produces the
+   executable or firmware image.
+
+Each `.c` file is a translation unit. It is compiled independently, so it needs declarations for
+every external function, object, and type it uses.
+
+## Declarations and definitions
+
+A declaration tells the compiler a name and type exist:
+
+```c
+int parse_message(const uint8_t *data, size_t length);
+```
+
+A definition supplies the function body or allocates the object:
+
+```c
+int parse_message(const uint8_t *data, size_t length)
+{
+    /* implementation */
+}
+```
+
+Public declarations belong in headers. Ordinary function definitions and mutable storage belong in
+source files. Including a header makes declarations visible during compilation; the linker still
+needs the object file or library containing each referenced definition.
+
+## How `#include` works
+
+`#include` is a preprocessor directive, not a runtime import. Conceptually, it inserts the selected
+header's contents into the current translation unit before compilation.
+
+```c
+#include "project/parser.h"
+#include <stdint.h>
+```
+
+GCC searches the quote form in the including file's directory and configured quote paths before
+continuing through the normal include paths. The angle-bracket form starts with configured system
+include paths. Projects commonly use quotes for their own headers and angle brackets for standard
+library headers; follow the framework's established convention for framework headers.
+
+`#pragma once` prevents a header from being processed repeatedly within one translation unit:
+
+```c
+#pragma once
+
+int parse_message(const uint8_t *data, size_t length);
+```
+
+Portable libraries may use traditional include guards instead:
+
+```c
+#ifndef PROJECT_PARSER_H
+#define PROJECT_PARSER_H
+
+int parse_message(const uint8_t *data, size_t length);
+
+#endif
+```
+
+## Header design
+
+A public header should be usable by itself. It must include the headers needed to understand its own
+public declarations instead of depending on an include order chosen by callers.
+
+Prefer headers containing:
+
+- public type definitions;
+- function and object declarations;
+- constants required by the API; and
+- small macros or inline functions when they are genuinely part of the interface.
+
+Avoid placing mutable object definitions or ordinary non-inline function bodies in headers. Doing so
+can create duplicate definitions when several translation units include the file.
+
+Including another library's type in a public declaration makes that library part of the public build
+dependency. Including a library only from a `.c` implementation normally makes it private.
+
+## Linkage and common failures
+
+These diagnostics point to different stages:
+
+| Diagnostic                                    | Stage         | Likely cause                                                   |
+| --------------------------------------------- | ------------- | -------------------------------------------------------------- |
+| `cannot open source file` or `file not found` | Preprocessing | Missing include path or undeclared build dependency            |
+| Unknown type or implicit function declaration | Compilation   | Missing or incorrect declaration                               |
+| Multiple definition                           | Linking       | A definition was emitted by more than one translation unit     |
+| Undefined reference                           | Linking       | Declaration was visible, but the implementation was not linked |
+
+Do not fix an undefined reference by changing include paths. Do not fix a missing header by copying a
+declaration into a caller. Repair the build dependency or library membership that owns the symbol.
+
+## Compilation databases and editors
+
+A `compile_commands.json` compilation database records the compiler, flags, definitions, and include
+paths used for each source file. Editors and static-analysis tools use it to reproduce the real build
+configuration.
+
+Headers do not normally have their own compilation command. An editor associates a header with a
+source translation unit or uses a fallback configuration. If editor diagnostics disagree with a
+successful build, confirm which translation unit and compiler the editor selected before changing
+source code or global include paths.
+
+Cross-compiled projects are especially sensitive: parsing an embedded header with the host compiler
+can define the wrong operating-system and architecture macros, activate irrelevant conditional code,
+and report headers that the target compiler never uses.

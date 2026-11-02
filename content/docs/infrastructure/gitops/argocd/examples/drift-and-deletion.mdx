@@ -1,0 +1,64 @@
+---
+title: 'Example: Drift, Pruning, and Deletion'
+description: 'Predict the outcome of source edits, live edits, removed resources, and deleted Applications.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/',
+  ]
+---
+
+## Start with the manual lab
+
+Use the disposable `config-demo` from the first example, synchronized to a known Git revision. Keep it manually synchronized for the first experiment. These exercises modify lab resources; verify context, names, and ownership before running them.
+
+```bash
+kubectl -n argocd-lab patch configmap greeting --type merge \
+  -p '{"data":{"message":"edited-live"}}'
+argocd app get config-demo --refresh
+argocd app diff config-demo
+```
+
+The watched Git value has not changed. With manual sync, expect a reported difference and the live edit to remain until synchronization. Sync the child deliberately to restore the Git value. If another controller or an automated policy changes it sooner, inspect the effective owner and policy before continuing.
+
+## Enable automation deliberately
+
+This is a `spec.syncPolicy` fragment to merge into the Application source; retain the other fields and sync options:
+
+```yaml
+automated:
+  enabled: true
+  prune: false
+  selfHeal: true
+```
+
+If you completed the root example, edit `catalog/application.yaml`, commit/push, then sync the root. Otherwise edit the manually bootstrapped Application declaration and apply it through that lab's owner. Inspect the live child spec before repeating the patch.
+
+With automated sync and self-heal enabled, drift in a managed field can trigger restoration to the Git value. Observe eventual convergence rather than relying on a fixed number of seconds; reconciliation configuration and errors affect timing. A Git change can now trigger deployment without your manual sync. See [automated policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).
+
+## Separate three deletion questions
+
+| Change                                  | What policy to inspect                  | Lab expectation                                                                              |
+| --------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Delete a live managed ConfigMap         | Self-heal and automated sync            | It can be recreated from source                                                              |
+| Remove a ConfigMap from rendered source | Pruning policy and manual prune choices | Without pruning, the live object can remain                                                  |
+| Delete the Application itself           | Deletion mode and resource finalizer    | The example's absent finalizer leaves resources behind for direct non-cascading API deletion |
+
+These are different operations. `prune: false` does not protect objects from explicit operator deletion or every cascading deletion path. A CLI/UI deletion can choose a cascading mode and add finalizer behavior; inspect the chosen operation rather than assuming an absent source annotation answers every case. See [Application deletion](https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/).
+
+## Observe pruning without an empty-application trap
+
+Restore the original greeting first. Add a second disposable ConfigMap, `temporary-note`, to the workload Kustomization and synchronize it. Then remove only that second ConfigMap from source while retaining `greeting`.
+
+With automated pruning disabled, refresh and inspect which resource requires pruning. For an intentional lab deletion, review `argocd app diff config-demo` and use the appropriate manual prune operation after verifying it selects only the disposable object. To test automatic pruning instead, change the Application policy at its source, commit/sync its owner, and repeat with another disposable object.
+
+Do not use a database, PVC, Namespace, project, or controller CRD as the pruning exercise. This example keeps a nonempty desired resource set; `allowEmpty` is a separate control, not a necessary setting for routine updates. Resource-level pruning protections and deletion confirmation are additional policy choices; see [sync options](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/).
+
+## Parent ownership changes the cleanup procedure
+
+A root that still declares the child can recreate a child you delete manually when it next synchronizes. Retire the child through its owning source and intended prune policy first. A parent pruning a child Application can trigger deletion of the child's resources if that child has a cascading finalizer.
+
+For the non-cascading manual lab, remove the Application's owner before deleting its workload objects. Keep the controller installation intact. Before any real stateful retirement, pause traffic, verify backups, define data retention, and review the exact deletion operation independently of this disposable exercise.

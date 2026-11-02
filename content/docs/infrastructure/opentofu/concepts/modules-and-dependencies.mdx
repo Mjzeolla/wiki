@@ -1,0 +1,77 @@
+---
+title: 'Modules and Dependencies'
+description: 'Trace root and child modules, explicit value flow, outputs, and graph-based ordering.'
+tags:
+  - opentofu
+  - modules
+  - architecture
+status: growing
+sources:
+  - https://opentofu.org/docs/language/modules/syntax/
+  - https://opentofu.org/docs/language/meta-arguments/for_each/
+  - https://opentofu.org/docs/language/values/outputs/
+---
+
+A module groups configuration behind an interface. The root module is the directory where the
+operation begins. A child module is called by a module block. All compatible configuration files
+in one module directory contribute to that module; filename order does not make execution stages.
+See [module blocks](https://opentofu.org/docs/language/modules/syntax/).
+
+A typical layout separates an executable environment root from reusable components:
+
+```text
+infrastructure/
+├── environments/
+│   └── lab/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+└── modules/
+    └── server/
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
+```
+
+Run from `environments/lab`. Initializing `modules/server` alone does not load the environment's
+backend, provider settings, or concrete inputs.
+
+## Follow one argument across the boundary
+
+This is an illustrative call; it requires a real child module with the shown input contract:
+
+```hcl
+module "server" {
+  source   = "../../modules/server"
+  for_each = var.servers
+
+  hostname = each.key
+  address  = each.value.address
+  memory   = each.value.memory
+}
+```
+
+The child must declare `hostname`, `address`, and `memory`. It does not automatically inherit the
+caller's variables or locals. It returns public values through declared outputs; the caller reads
+an output as `module.server["web-01"].address` only if the child defines that output.
+
+A module's output can become another block's input, creating a graph dependency. This is why
+changing source-line order is not a reliable way to force infrastructure ordering.
+
+## Stable keys are an API choice
+
+`for_each` associates instances with map/set keys, so use stable keys that represent identity.
+Indexing a collection by a position that shifts when an item is removed can create surprising plans.
+Changing `web-01` to `frontend-01` changes an address even if its attributes stay equal. Plan an
+address migration rather than assuming it is only a label change.
+
+## Keep the interface useful
+
+A good module owns a coherent concern and exposes values callers genuinely need. Passing every
+provider attribute through dozens of thin variables can add ceremony without a meaningful boundary.
+Conversely, embedding environment credentials and local inventory generation inside a reusable
+server module couples it to one deployment workflow.
+
+Keep non-secret outputs suitable for a reviewed handoff. A sensitive output label affects display;
+it does not make every consumer or state reader unable to access the value. The
+[state security guide](/docs/infrastructure/opentofu/state/security-and-recovery) explains that boundary.

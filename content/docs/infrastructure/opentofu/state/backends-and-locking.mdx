@@ -1,0 +1,55 @@
+---
+title: 'Backends and Locking'
+description: 'Separate state location, access, concurrency, versioning, and provider authentication.'
+tags:
+  - opentofu
+  - state
+  - backends
+status: growing
+sources:
+  - https://opentofu.org/docs/language/state/backends/
+  - https://opentofu.org/docs/language/state/locking/
+  - https://opentofu.org/docs/language/settings/backends/configuration/
+---
+
+A backend determines how state is stored and which supported backend operations coordinate it.
+Remote storage makes state available to authorized operators/runners, but its access controls,
+locking, versioning, and recovery behavior still need explicit configuration and tests.
+
+The backend is initialized before ordinary resource operations. A partial backend configuration
+can receive concrete settings during `tofu init -backend-config=backend.hcl`. That file is not an
+automatically loaded variable file. See
+[backend configuration](https://opentofu.org/docs/language/settings/backends/configuration/).
+
+## Different controls solve different problems
+
+| Control                | Purpose                                 | Does not establish                                |
+| ---------------------- | --------------------------------------- | ------------------------------------------------- |
+| Access control         | Limit readers/writers                   | Independent recovery or valid resource ownership  |
+| TLS                    | Protect transport and endpoint identity | At-rest encryption or backup                      |
+| State locking          | Coordinate supported concurrent writers | A database backup or a correct plan               |
+| Object versioning      | Retain earlier state objects            | Recovery from loss of the storage service itself  |
+| Client-side encryption | Protect stored state/plan contents      | Availability of decryption keys after an incident |
+
+Lock behavior is backend-specific. Verify the configured backend actually implements the locking
+mechanism expected by the installed OpenTofu version. “S3-compatible” describes an interface and
+is not evidence that every required lock or consistency operation works identically.
+
+## A lock is not disposable friction
+
+When an operation reports an existing lock, identify its owning run/operator and whether that run
+is still active. Preserve the lock ID and non-sensitive context. Do not run a force-unlock or remove
+a lock object merely because a pipeline timed out; the writer may still be running.
+
+Make the backend recoverable independently from the resources it provisions. Hosting the only
+state service inside the Kubernetes cluster needed to restore that service creates a dependency
+cycle. The same applies to storing the only decryption key in the system it unlocks.
+
+## Validate the operational contract
+
+A production readiness exercise should demonstrate two authorized operations cannot accidentally
+write concurrently, the intended backend survives workstation loss, a previous object version can
+be recovered, and independent key material can decrypt it. Perform these tests in an isolated
+backend/environment; do not manufacture lock contention against an active production apply.
+
+Continue with [sensitive data and recovery](/docs/infrastructure/opentofu/state/security-and-recovery).

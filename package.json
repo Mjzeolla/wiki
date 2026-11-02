@@ -21,8 +21,7 @@
     "markdown:fix": "markdownlint-cli2 --fix",
     "prepare": "husky",
     "start": "next start",
-    "routes:check": "node scripts/ci/check-routes.mjs",
-    "test": "pnpm content:check && pnpm routes:check",
+    "test": "pnpm content:check",
     "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit",
     "build:pages": "node scripts/ci/build-pages.mjs"
   },

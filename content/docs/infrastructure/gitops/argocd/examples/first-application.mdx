@@ -1,0 +1,159 @@
+---
+title: 'Example: Your First Declarative Application'
+description: 'Build a minimal Git repository, restrict it with an AppProject, and deploy one ConfigMap through manual sync.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/projects/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/',
+  ]
+---
+
+## Prerequisites and expected result
+
+Use a disposable Kubernetes cluster and an existing Argo CD installation in namespace `argocd`. You need authorized `kubectl` and Argo CD CLI sessions for that same environment, Git, and a repository you own. Start outside a production checkout. No installation, push, or deployment is performed merely by reading this guide.
+
+The result is one ConfigMap named `greeting` in `argocd-lab`. There is no container, external endpoint, secret, or database, so you can focus on declaration ownership.
+
+## 1. Create the source repository
+
+Create these files in your learning repository. Replace `YOUR_ACCOUNT/argocd-learning` in both bootstrap files with its real URL.
+
+```text
+argocd-learning/
+├── apps/config-demo/
+│   ├── configmap.yaml
+│   └── kustomization.yaml
+└── bootstrap/
+    ├── project.yaml
+    └── application.yaml
+```
+
+Create `apps/config-demo/configmap.yaml`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: greeting
+  labels:
+    app.kubernetes.io/name: config-demo
+data:
+  message: hello-from-git
+```
+
+Create `apps/config-demo/kustomization.yaml`:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - configmap.yaml
+```
+
+Create `bootstrap/project.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: config-demo
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/YOUR_ACCOUNT/argocd-learning.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd-lab
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+```
+
+Create `bootstrap/application.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: config-demo
+  namespace: argocd
+spec:
+  project: config-demo
+  source:
+    repoURL: https://github.com/YOUR_ACCOUNT/argocd-learning.git
+    targetRevision: main
+    path: apps/config-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-lab
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
+```
+
+The project permits only ConfigMaps in the existing lab namespace. The empty cluster-resource allowlist prevents this project from deploying cluster-scoped resources. This narrow permission is sufficient for this example, but not for a Deployment or Namespace. See [project permissions](https://argo-cd.readthedocs.io/en/stable/user-guide/projects/).
+
+## 2. Render before pushing
+
+From your learning repository root:
+
+```bash
+kubectl kustomize apps/config-demo
+```
+
+Expect exactly one ConfigMap with `data.message: hello-from-git`. This command renders locally; it does not connect to Kubernetes or apply anything. Inspect the names, content, and kinds before proceeding.
+
+Commit and push the four reviewed files to your repository's `main` branch using your normal workflow. A local commit or an uncommitted file is insufficient: Argo CD must be able to fetch the selected remote revision. Establish [repository access](/docs/infrastructure/gitops/argocd/configuration/repository-access) for private source before continuing.
+
+## 3. Submit the bootstrap declarations
+
+Verify both your Kubernetes context and Argo CD CLI destination refer to the intended lab. The following commands create the lab namespace, project, and Application; they are the deliberate initial bootstrap writes:
+
+```bash
+kubectl config current-context
+argocd context
+kubectl create namespace argocd-lab
+kubectl apply -f bootstrap/project.yaml
+kubectl apply -f bootstrap/application.yaml
+```
+
+Use an unused lab namespace; do not adopt somebody else's namespace if creation reports that it already exists. Wait for the Application to be compared:
+
+```bash
+argocd app get config-demo --refresh
+argocd app diff config-demo
+kubectl -n argocd get application config-demo
+```
+
+A diff command can return a nonzero exit code when differences exist. That is different from a source retrieval or rendering failure; inspect its output.
+
+Expect the desired ConfigMap to be missing from live state and the Application to report a difference. With manual sync, submitting the Application does not itself apply its ConfigMap. If the Application reports an invalid spec, source failure, or project denial, resolve that condition before syncing.
+
+## 4. Synchronize and inspect
+
+These commands request a write operation and then inspect its result:
+
+```bash
+argocd app sync config-demo
+argocd app wait config-demo --sync --timeout 120
+kubectl -n argocd-lab get configmap greeting -o yaml
+kubectl -n argocd get application config-demo -o jsonpath='{.status.sync.revision}{"\n"}'
+```
+
+Verify the ConfigMap value and the selected source revision. `Synced` establishes configuration agreement for the comparison; it is not a general service availability test. This application has no running service to probe.
+
+## 5. Deploy a second desired value
+
+Change `data.message` in the file to `hello-from-review`, render again, and commit/push through your normal workflow. Refresh, inspect the diff, sync, and read the ConfigMap again. Before sync, the live value should remain the old value; after sync it should match the selected new revision.
+
+If the value changes without your manual sync, inspect the live Application's policy and owner: the setup differs from this example. Do not assume your local YAML is its current effective policy.
+
+## Cleanup and next step
+
+The example intentionally has no resource-deletion finalizer. In this disposable, manually bootstrapped lab, delete the Application first, then its project, then the now-unmanaged lab ConfigMap and namespace. Confirm the names and contents before each deletion. Do not delete a shared controller namespace.
+
+If you continue into the [root/child example](/docs/infrastructure/gitops/argocd/examples/root-and-children), retain this lab instead and transfer ownership as described there. Do not let a second automation continuously apply the same Application.

@@ -1,0 +1,58 @@
+---
+title: 'Plays, Tasks, and Roles'
+description: 'Read execution order, role interfaces, module results, and controlled host selection.'
+tags:
+  - ansible
+  - playbooks
+  - roles
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_strategies.html
+---
+
+A playbook is a YAML list of plays. Each play selects hosts and defines context such as privilege
+escalation, variables, roles, and tasks. A task invokes one action/module. A role organizes a
+reusable concern with tasks, defaults, templates, files, handlers, and metadata.
+
+Unlike OpenTofu's dependency graph, play/task order is meaningful. A task requiring a package or
+file must run after the operation that establishes it, unless another explicit mechanism provides
+that prerequisite. See [playbooks](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_intro.html).
+
+## A role is an interface, not a magic installer
+
+A role's directory alone does nothing. A selected play must load it, its host pattern must match,
+and its dependencies/inputs must resolve. A role can be omitted or skipped while other plays succeed.
+A project should verify expected topology and required execution rather than treating exit zero
+as proof every intended concern ran.
+
+```text
+roles/
+└── web_service/
+    ├── defaults/main.yml
+    ├── tasks/main.yml
+    ├── templates/service.conf.j2
+    └── handlers/main.yml
+```
+
+`defaults` exposes overridable choices. `tasks` owns ordered operations. `templates` contains
+rendered files; it does not restart services by itself. `handlers` supplies explicitly notified
+actions. Keep one role focused on a coherent change boundary, not every operation on the machine.
+
+## Module results are evidence to interpret
+
+A module can report `ok`, `changed`, `failed`, or a skipped operation. `changed` means the module
+reported a change according to its implementation, not that the service is now useful. Shell and
+command tasks especially need explicit reasoning about repeated execution and changed/failed conditions.
+Prefer a purpose-built declarative module when one fits the required state.
+
+## Control disruption at the correct level
+
+A play's `serial` can limit how many hosts are processed as a batch. That helps rolling operations,
+but it does not replace a service's quorum or disruption constraints. `--limit` restricts host
+selection and tags restrict task execution; either can skip prerequisites.
+
+For sensitive host changes, review the complete selected sequence and independent health checks.
+Use [templates and handlers](/docs/infrastructure/ansible/concepts/templates-and-handlers) for service restarts and
+[execution commands](/docs/infrastructure/ansible/commands/execution-and-targeting) for the operator-facing contract.

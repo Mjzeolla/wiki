@@ -1,0 +1,67 @@
+---
+title: 'Bootstrap Infrastructure Handoffs'
+description: 'Build the dependency chain deliberately from external state through hosts, GitOps, and service verification.'
+tags:
+  - infrastructure
+  - bootstrap
+  - playbooks
+status: growing
+sources:
+  - https://opentofu.org/docs/language/state/
+  - https://docs.ansible.com/projects/ansible/latest/getting_started/index.html
+  - https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/
+---
+
+Use this checklist when designing or rehearsing a new environment. It does not assume a particular
+cloud, homelab hostname, VM address, chart version, or secret value. Each stage must name its owner,
+inputs, credentials, exit condition, and recovery material.
+
+## 1. Establish dependencies outside the system being created
+
+Prepare protected state storage, concurrency controls, versioning, and independent encryption-key
+recovery. Confirm identity, network, TLS, source/registry access, and storage dependencies. Avoid
+hosting the only state or secret recovery capability inside the cluster required to recreate it.
+
+**Exit condition:** an authorized replacement workstation can access the intended backend and
+independent recovery material; lock and restore behavior have been rehearsed in isolation.
+
+## 2. Provision resources and verify first-boot identity
+
+Review/apply the actual provider plan, then validate the created objects and guest bootstrap access.
+A provider success response does not prove Linux is ready. For rebuilt machines, verify new SSH
+host identities through a trusted path.
+
+**Exit condition:** intended resources exist, addresses/IDs match the reviewed plan, and initial
+administrator access is attributable and working.
+
+## 3. Generate and converge host configuration
+
+Create inventory from a minimal reviewed output contract. Validate expected groups, connection
+addresses, secrets, and topology. Preview and run host configuration in the required sequence.
+If a control plane needs an initial member and stable endpoint before joins, make that ordering explicit.
+
+**Exit condition:** expected host controls and cluster health checks pass, operator access survives
+reconnection, and snapshot/recovery prerequisites exist. A second convergence has no unexplained drift.
+
+## 4. Establish GitOps access and the root graph
+
+Install the reviewed pinned controller release, register narrowly scoped source/cluster identities,
+and submit the first Applications/projects. Confirm the actual watched revision and permissions.
+Installing the controller does not automatically discover every application directory in Git.
+
+**Exit condition:** root and intended children can fetch/render their actual sources; project
+permissions match rendered resource namespaces/kinds.
+
+## 5. Verify dependencies and workloads
+
+For each service, check controller readiness, established CRDs, provider authentication, synchronized
+secrets, storage, admission, rollout, endpoints, TLS/routing, and the required behavior. Parent waves
+or retry settings do not replace these distinct checkpoints.
+
+**Exit condition:** application-level verification, alert delivery, independent backups, and restore
+drills meet the environment's recovery objectives. Otherwise record the missing evidence and limit
+workloads to the explicitly accepted availability/data risk.
+
+Stop at the first failed boundary. Jumping ahead often creates more symptoms without resolving the
+missing prerequisite. Use the [learning map](/docs/infrastructure) to locate the
+explanation behind the stage rather than duplicating every tool's setup inside this checklist.

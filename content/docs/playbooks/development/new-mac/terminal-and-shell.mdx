@@ -6,25 +6,32 @@ tags:
   - zsh
   - macos
 status: growing
+sources:
+  - https://iterm2.com/documentation.html
+  - https://formulae.brew.sh/cask/iterm2
+  - https://iterm2.com/documentation-preferences-general.html
 ---
 
-macOS already includes Terminal and Zsh. Replace the terminal emulator only when you want better
-rendering, tabs and splits, keyboard workflow, configuration, or cross-platform behavior.
+Use **iTerm2** as the terminal emulator for this Mac setup, with Zsh as the shell.
+The terminal provides windows, tabs, and panes; Zsh runs the commands inside them.
 
-## A practical default
+## Install iTerm2
 
-[Ghostty](https://ghostty.org/docs) is a strong default for a personal developer Mac: it uses a
-native macOS interface, GPU rendering, and useful defaults. The project provides signed and
-notarized macOS builds; its Homebrew cask repackages that official binary:
+Install the [Homebrew iTerm2 cask](https://formulae.brew.sh/cask/iterm2):
 
 ```bash
-brew install --cask ghostty
+brew install --cask iterm2
 ```
 
-Use Apple's Terminal if simplicity and zero extra dependencies matter more. Choose WezTerm when a
-Lua-configured, cross-platform terminal is more valuable. Avoid turning the terminal, shell,
-prompt, multiplexer, and editor into one inseparable configuration unless that coupling is
-intentional.
+Open iTerm2 from Applications and use it for the commands in these playbooks. Configure profiles
+for fonts, colors, working directories, and keyboard shortcuts as needed. iTerm2 supports split
+panes, search, and optional shell integration; see the
+[iTerm2 documentation](https://iterm2.com/documentation.html).
+
+Keep terminal settings separate from `.zshrc` and other shell files. To restore iTerm2 preferences
+across Macs, use its custom preferences folder setting and keep the selected folder under the
+`config/iterm2/` owner in your dotfiles repository. Review settings before syncing them; see
+[General preferences](https://iterm2.com/documentation-preferences-general.html).
 
 ## Shell layers
 
@@ -59,5 +66,5 @@ brew install git gh ripgrep fd fzf jq yq bat eza zoxide
 Install only the commands you use. Learn their unaliased forms first, and avoid aliases that make
 destructive commands more aggressive.
 
-Continue with [command history and navigation](./command-history-and-navigation) to configure durable
+Continue with [command history and navigation](/docs/playbooks/development/new-mac/command-history-and-navigation) to configure durable
 Zsh history, fuzzy `Control-R` search, contextual Atuin history, and directory jumping with zoxide.

@@ -1,0 +1,130 @@
+---
+title: 'Example: Root and Child Applications'
+description: 'Put Application declarations under GitOps ownership and distinguish parent sync from child reconciliation.'
+tags: ['argo-cd', 'gitops', 'declarative-deployment']
+status: 'growing'
+sources:
+  [
+    'https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/',
+    'https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/',
+  ]
+---
+
+This example implements the [app of apps pattern](/docs/infrastructure/gitops/argocd/concepts/app-of-apps):
+the root renders child Application declarations, and those children render their own workloads.
+Read the definition first if you are deciding what makes a source an app of apps.
+
+## What changes from the first lab
+
+The first example used `kubectl apply` to submit the project and Application. Now a root Application will render those two objects from Git. The child still owns the same ConfigMap.
+
+```text
+operator owns bootstrap/root-project.yaml and root-application.yaml
+  -> root Application learning-root renders catalog/
+       -> AppProject config-demo
+       -> Application config-demo renders apps/config-demo/
+            -> ConfigMap argocd-lab/greeting
+```
+
+A parent is an ordinary Application whose rendered resources happen to include Applications. There is no special parent scheduler that runs the child as a task. The [bootstrap guidance](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) discusses this pattern alongside ApplicationSets; use a small explicit parent here to learn ownership before introducing generators.
+
+## 1. Move the declarations into the catalog
+
+Starting with the learning repository, move `bootstrap/project.yaml` to `catalog/project.yaml` and `bootstrap/application.yaml` to `catalog/application.yaml`. Retain their names and specs. Add this annotation to the project's metadata so the parent's sync submits the project first:
+
+```yaml
+annotations:
+  argocd.argoproj.io/sync-wave: '-10'
+```
+
+Create `catalog/kustomization.yaml`:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - project.yaml
+  - application.yaml
+```
+
+Render with `kubectl kustomize catalog`. Expect exactly one AppProject and one Application, not a ConfigMap. The child references that workload; the parent does not render the child's source recursively.
+
+## 2. Define the root's permission boundary
+
+Create `bootstrap/root-project.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: learning-root
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/YOUR_ACCOUNT/argocd-learning.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: AppProject
+    - group: argoproj.io
+      kind: Application
+```
+
+This root can create project and Application declarations in the controller namespace. That is administrative capability: someone able to modify those declarations could broaden a child project's powers. Repository review, cluster RBAC, and operator permissions must protect this source. A narrow-looking kind list does not make project administration safe for untrusted contributors.
+
+Create `bootstrap/root-application.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: learning-root
+  namespace: argocd
+spec:
+  project: learning-root
+  source:
+    repoURL: https://github.com/YOUR_ACCOUNT/argocd-learning.git
+    targetRevision: main
+    path: catalog
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
+```
+
+Replace both repository URLs, commit/push, and stop routinely applying the moved child files by hand. Apply only the two root bootstrap files through the documented operator procedure:
+
+```bash
+kubectl apply -f bootstrap/root-project.yaml
+kubectl apply -f bootstrap/root-application.yaml
+argocd app get learning-root --refresh
+argocd app diff learning-root
+argocd app sync learning-root
+```
+
+The preexisting child objects were manually bootstrapped, not tracked by another Argo Application. Inspect the root's diff before accepting their ownership. If another Application already owns them, resolve ownership explicitly instead of disabling the shared-resource guard.
+
+## 3. Follow both status paths
+
+```bash
+argocd app get learning-root
+argocd app get config-demo
+kubectl -n argocd-lab get configmap greeting
+```
+
+A root sync establishes the child declaration. The child remains manually synchronized because its own policy has not changed. A parent's `automated` settings would not automatically become the child's settings.
+
+A sync-wave annotation on the project orders the parent's resources. It does not guarantee that an independent child's workloads have reached readiness. Built-in Application health assessment is not a universal cross-Application dependency barrier; review installed health customizations when relying on one. See [waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) and [resource health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/).
+
+## Make the next change at the right layer
+
+To change the message, edit `apps/config-demo/configmap.yaml`, then compare/sync the child. A parent sync is not required merely because the child's workload changed. To change the child's source path or sync policy, edit `catalog/application.yaml`, sync the parent, then inspect the child's new behavior.
+
+If a source is pinned to a commit, it must be advanced to observe later changes. If it follows `main`, change detection and its policy determine when it acts. Do not use a direct UI policy edit as the durable change once Git owns the Application spec.
+
+Neither root nor child in this example has automated pruning or a deletion finalizer. Review [deletion paths](/docs/infrastructure/gitops/argocd/examples/drift-and-deletion) before adding them.

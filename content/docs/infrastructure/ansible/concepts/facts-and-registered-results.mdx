@@ -1,0 +1,36 @@
+---
+title: 'Facts and Registered Results'
+description: 'Distinguish host observations, task results, and deliberately derived variables.'
+tags: ['ansible', 'concepts']
+status: 'growing'
+sources:
+  [
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_vars_facts.html',
+    'https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_delegation.html',
+  ]
+---
+
+## Three different sources
+
+Facts describe a managed host, such as its operating system and memory. A registered result stores one task's response for that host during a run. `set_fact` defines a host-associated value derived by the playbook. None of these automatically updates an inventory file.
+
+```yaml
+- name: Inspect a configuration file
+  ansible.builtin.stat:
+    path: /etc/example.conf
+  register: example_config
+
+- name: Report whether it exists
+  ansible.builtin.debug:
+    msg: 'Configuration exists: {{ example_config.stat.exists }}'
+```
+
+This is a task fragment. `stat` inspects filesystem metadata without reading the contents. A registered variable is a structured result, not just a string. Inspect documented result keys and account for skipped or failed tasks before using their fields.
+
+## Scope and freshness
+
+Fact gathering occurs at play startup unless disabled. `gather_facts: false` does not remove facts already gathered or loaded through an explicitly configured cache. Do not assume another host has facts merely because it appears in `hostvars`; the facts must have been collected or cached.
+
+Registration belongs to each selected inventory host. Delegating a command changes its execution location, while its registered result normally remains associated with the current inventory host. Make that ownership explicit when collecting shared evidence.
+
+Try the [results example](/docs/infrastructure/ansible/examples/results-and-conditions) before applying this pattern to remote hosts.

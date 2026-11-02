@@ -1,0 +1,30 @@
+---
+title: 'Troubleshoot OpenTofu'
+description: 'Classify backend, provider, input, ownership, and apply failures before changing state.'
+tags:
+  - opentofu
+  - troubleshooting
+status: growing
+sources:
+  - https://opentofu.org/docs/cli/commands/plan/
+  - https://opentofu.org/docs/language/state/locking/
+---
+
+Start with the first failed operation and the API it was trying to use. The backend, module source,
+provider registry, provider API, and guest operating system are different dependencies.
+
+| Symptom                       | Discriminating evidence                                      | Avoid                                              |
+| ----------------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
+| Backend initialization fails  | Selected backend, endpoint/TLS, identity, object permissions | Creating competing local state                     |
+| Existing lock reported        | Owning run/operator, lock metadata, active writer state      | Blind force-unlock                                 |
+| Provider authentication fails | Provider endpoint and exact missing API permission           | Assuming backend success proves provider access    |
+| Unexpected replacement        | Address/key changes and immutable attribute reason           | Applying because the text diff looks small         |
+| Object already exists         | Recorded ownership, remote ID, existing environment state    | Removing state to silence the error                |
+| Apply partly succeeds         | First provider error, state updates, actual resources        | Treating retry or HCL revert as automatic rollback |
+
+Keep a minimal reproduction that preserves the selected root and inputs without disclosing secrets.
+Record command, exit result, non-sensitive resource addresses, and the intended before/after state.
+A screen of raw environment variables usually leaks more than it explains.
+
+Review [state identity](/docs/infrastructure/opentofu/state/identity-and-drift), [locking](/docs/infrastructure/opentofu/state/backends-and-locking),
+and [apply behavior](/docs/infrastructure/opentofu/commands/planning-and-application) for the relevant boundary.

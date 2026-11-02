@@ -1,0 +1,4 @@
+{
+  "title": "GitOps Operations",
+  "pages": ["index", "deploy-and-verify", "rollback-and-recovery"]
+}

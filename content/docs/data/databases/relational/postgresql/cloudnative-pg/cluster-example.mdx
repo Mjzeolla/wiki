@@ -1,0 +1,73 @@
+---
+title: 'Example: Declare a PostgreSQL Database'
+description: 'Read a minimal CloudNativePG Cluster and follow storage and Service creation.'
+tags: ['postgresql', 'cloudnative-pg', 'examples']
+status: 'growing'
+sources:
+  [
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/quickstart.md',
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/bootstrap.md',
+    'https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/service_management.md',
+  ]
+---
+
+## Prerequisites and scope
+
+Use an authorized disposable lab with a compatible CloudNativePG operator/CRD installed, an existing `postgres-lab` namespace, and an explicitly reviewed StorageClass named `learning-db-storage`. That class is an example contract, not a default supplied by this wiki. Validate storage permissions and durability before live use.
+
+Create `cluster.yaml`:
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: learning-db
+  namespace: postgres-lab
+spec:
+  instances: 1
+  enableSuperuserAccess: false
+  bootstrap:
+    initdb:
+      database: learning
+      owner: learning
+  storage:
+    storageClass: learning-db-storage
+    size: 1Gi
+```
+
+## Read the declaration
+
+| Field                          | Meaning                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------- |
+| `kind: Cluster`                | CloudNativePG's custom resource; the CRD must already exist                |
+| `instances: 1`                 | One PostgreSQL instance with no replica failover target                    |
+| `enableSuperuserAccess: false` | Disable the operator's external superuser access mechanism                 |
+| `bootstrap.initdb`             | Initialize a new database cluster with this application database and owner |
+| `storageClass`                 | Select how the database PVC is provisioned                                 |
+| `size`                         | Requested storage capacity, not a backup or performance guarantee          |
+
+For this introductory lab, `imageName` is omitted and the operator's supported default selects the image. A real reviewed deployment should choose the appropriate supported image explicitly and record it separately from the operator/chart version. Resource sizing, credentials, TLS, policies, backup, and monitoring also need environment-specific configuration.
+
+Bootstrap describes initialization of new data; changing it later is not a general SQL migration mechanism. See the [bootstrap reference](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.30/docs/src/bootstrap.md).
+
+## Inspect after an authorized deployment
+
+Apply the reviewed declaration through the lab's actual owner. Then inspect:
+
+```bash
+kubectl -n postgres-lab get clusters.postgresql.cnpg.io learning-db
+kubectl -n postgres-lab describe clusters.postgresql.cnpg.io learning-db
+kubectl -n postgres-lab get pods,pvc,services
+kubectl -n postgres-lab get service learning-db-rw
+kubectl -n postgres-lab get events --sort-by=.metadata.creationTimestamp
+```
+
+Expect the operator to create the database runtime and storage requests, the claims to bind through the chosen storage class, and the primary to become ready behind `learning-db-rw`. Failures can happen at any of those boundaries. Do not infer database readiness solely from the custom resource being accepted.
+
+Configure an approved client with the actual namespace, Service, database, role, TLS policy, credentials, and network permissions. Never paste a generated password into public docs or infer that a Service bypasses authentication. A SQL write/read and reconnect test adds application evidence beyond Pod readiness.
+
+## More instances are a topology change
+
+Increasing `instances` can create PostgreSQL replicas when supported resources and storage are available. Those replicas need their own PVCs and capacity. Several instances on one node, storage server, or physical host still share those failure domains. Replication improves configured availability but does not restore an accidentally deleted table or substitute for a backup.
+
+Before cleanup, stop clients and review the actual custom-resource, Pod, and PVC deletion/retention behavior. Do not assume an Argo CD prune policy or retained StorageClass makes database deletion harmless. Continue with [operations](/docs/data/databases/relational/postgresql/cloudnative-pg/operations).

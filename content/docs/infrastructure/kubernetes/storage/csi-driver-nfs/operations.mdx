@@ -1,0 +1,35 @@
+---
+title: 'Operate and Troubleshoot NFS CSI'
+description: 'Find failures in provisioning, node mounts, export permissions, capacity, and retention.'
+tags: ['kubernetes', 'storage', 'nfs', 'operations']
+status: 'growing'
+sources:
+  [
+    'https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md',
+    'https://kubernetes.io/docs/concepts/storage/persistent-volumes/',
+  ]
+---
+
+## Diagnose the storage layer in order
+
+| Symptom                                         | Inspect                                                                       | Common boundary                                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| PVC Pending                                     | Class name, provisioner availability, claim events, and binding mode          | Provisioning has not completed; delayed binding may intentionally wait for a workload |
+| PVC Bound, Pod mount fails                      | Node CSI components, NFS tools, routing, firewall and export authorization    | Allocation succeeded but the node cannot mount                                        |
+| Mount works, application gets permission denied | UID/GID, root squashing, directory ownership and application security context | Server/filesystem authorization differs from network reachability                     |
+| Database or application stalls                  | Server availability, mount behavior, latency, sync semantics and saturation   | Healthy Kubernetes objects do not establish healthy storage I/O                       |
+| Claim removed but files remain                  | PV reclaim policy and backend lifecycle                                       | Retention may be intentional                                                          |
+
+Do not fix permissions by weakening a shared export's identity mapping without reviewing all consumers. NFS depends on the worker nodes reaching the server; application-to-application NetworkPolicy is not the only network control involved.
+
+## Distinguish retention controls
+
+Kubernetes PV `reclaimPolicy: Retain` and the driver's `onDelete` parameter operate at different lifecycle points. Retain preserves a released PV for administrator handling. Driver `onDelete` controls backend handling when a CSI deletion is invoked. NAS-side deletion remains another independent action. See [driver deletion parameters](https://github.com/kubernetes-csi/csi-driver-nfs/blob/v4.13.4/docs/driver-parameters.md).
+
+Claims and subdirectories are not automatically separate security tenants or quota domains. Provision separate exports/datasets and authorization boundaries when those guarantees are required, and verify the actual behavior.
+
+## Verify recovery, not only remounts
+
+Test synthetic writes, container restart, Pod replacement, node rescheduling where supported, server outage behavior, and restoration from an independently protected backup. Preserve claims and data during non-destructive tests. A successful remount demonstrates continued access to existing storage; it does not demonstrate backup recovery.
+
+For PostgreSQL consumers, the [CloudNativePG operations guide](/docs/data/databases/relational/postgresql/cloudnative-pg/operations) adds database ownership, durable-write, replication, and recovery requirements. A storage class suitable for general files is not automatically validated for database data.

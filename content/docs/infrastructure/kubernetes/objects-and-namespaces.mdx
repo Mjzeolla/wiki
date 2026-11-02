@@ -1,0 +1,75 @@
+---
+title: Objects and Namespaces
+description: Understand manifests, desired state, namespace scope, labels, and API extensions.
+tags:
+  - kubernetes
+  - k8s
+status: growing
+sources:
+  - https://kubernetes.io/docs/concepts/overview/working-with-objects/
+  - https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+  - https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
+---
+
+A Kubernetes **object** is a record managed through the cluster API. A resource is the API type,
+such as Deployments; an object is an instance, such as the Deployment named `example-api`.
+A YAML or JSON **manifest** describes the object you want to manage.
+
+## Reading a manifest
+
+| Field                  | Meaning                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| `apiVersion`           | API group and version defining this object's schema       |
+| `kind`                 | Object type, such as `Deployment` or `Secret`             |
+| `metadata.name`        | Name identifying the object within its resource and scope |
+| `metadata.namespace`   | Namespace for a namespaced object                         |
+| `metadata.labels`      | Key/value tags that selectors can match                   |
+| `metadata.annotations` | Additional metadata, such as tool configuration           |
+| `spec`                 | Desired configuration for types that use this field       |
+| `status`               | Observed state usually maintained by the system           |
+
+Not every object uses `spec`: ConfigMaps and Secrets use fields such as `data`. Names are useful
+for lookup; UIDs distinguish an object from a later replacement with the same name.
+See [objects in Kubernetes](https://kubernetes.io/docs/concepts/overview/working-with-objects/).
+
+## Namespace
+
+A Namespace groups namespaced objects within a cluster. `example-api` can exist in both `dev` and
+`production` because each namespace provides a separate naming scope. Pods, Deployments, Services,
+ConfigMaps, Secrets, and PersistentVolumeClaims are namespaced. Nodes, Namespaces themselves,
+PersistentVolumes, and StorageClasses are cluster-scoped.
+
+Namespaces help organize teams and environments. They do not automatically block network traffic
+or grant permissions: use NetworkPolicy and RBAC for those controls. A Pod normally references
+ConfigMaps, Secrets, and volume claims in its own namespace. Common built-in namespaces include
+`default`, `kube-system`, `kube-public`, and `kube-node-lease`.
+See [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
+
+## Labels and selectors
+
+Labels such as `app: example-api` describe an object. A selector asks for objects matching those
+labels. A Deployment's selector must match its Pod template labels. A Service can independently
+select the same Pods. Matching is based on labels, not similar names; a mismatched Service selector
+can leave a healthy application unreachable through that Service.
+
+This illustrative fragment shows the relationship; it is not a complete Deployment manifest:
+
+```yaml
+spec:
+  selector:
+    matchLabels:
+      app: example-api
+  template:
+    metadata:
+      labels:
+        app: example-api
+```
+
+## CustomResourceDefinition and operator
+
+A CustomResourceDefinition (CRD) adds a new API resource type. A custom resource is an instance of
+that type. An operator uses controllers to implement domain-specific behavior for resources.
+Installing a CRD defines the schema; it does not itself run the controller that acts on instances.
+See [custom resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
+
+Continue with [workloads](/docs/infrastructure/kubernetes/pods-and-workloads) and [networking](/docs/infrastructure/kubernetes/services-and-networking).

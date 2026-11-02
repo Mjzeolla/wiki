@@ -1,0 +1,50 @@
+---
+title: 'Controller and Connections'
+description: 'Separate the controller, managed node, connection identity, privilege escalation, and execution location.'
+tags:
+  - ansible
+  - ssh
+  - automation
+status: growing
+sources:
+  - https://docs.ansible.com/projects/ansible/latest/getting_started/basic_concepts.html
+  - https://docs.ansible.com/projects/ansible/latest/inventory_guide/connection_details.html
+  - https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_privilege_escalation.html
+---
+
+The controller is the machine/process running Ansible. A managed node is a target selected through
+inventory. For common Linux automation, the controller authenticates over SSH and modules execute
+on the target using an available interpreter. Not every action runs remotely: local connections,
+delegation, lookups, and controller-side plugins have their own execution context.
+
+This distinction explains why a template can reference controller data but write a file on another
+machine, and why a local missing dependency can fail a play before a remote service is touched.
+See [connection details](https://docs.ansible.com/projects/ansible/latest/inventory_guide/connection_details.html).
+
+## Access has several stages
+
+| Stage                | Example evidence                                       | Separate from                                |
+| -------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| Routing              | Intended address reachable over the authorized network | SSH authentication                           |
+| Server identity      | Verified SSH host key                                  | Whether your user is permitted               |
+| Authentication       | Correct account and authorized key                     | Privilege escalation                         |
+| Privilege escalation | Approved sudo/become behavior                          | Application service authorization            |
+| Module runtime       | Required interpreter/module support                    | Semantic correctness of the requested change |
+
+`become: true` requests escalation; it does not magically supply sudo permissions. A successful
+SSH login can still fail a privileged task. Conversely, `ansible.builtin.ping` tests Ansible module
+execution and is not an ICMP network ping.
+
+## Make selection explicit
+
+For a new project, pass inventory explicitly and control which configuration file is selected.
+A command launched from another directory can discover different defaults. Inspect
+`ansible --version` and `ansible-config dump --only-changed` when the behavior differs from the
+repository's documented wrapper. Review their output before sharing operational paths.
+
+After a VM rebuild, an address may present a new host identity. Verify it independently before
+updating known hosts. Disabling host key checking masks the evidence rather than proving the new
+machine is the intended target.
+
+The controller itself is a privileged execution environment: it can decrypt inputs and contact
+many hosts. Protect its credentials, plugin sources, dependencies, and logs accordingly.

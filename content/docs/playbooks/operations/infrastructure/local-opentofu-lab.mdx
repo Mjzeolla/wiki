@@ -1,0 +1,117 @@
+---
+title: 'Local OpenTofu Lifecycle Lab'
+description: 'Create one local state-only resource, review a saved plan, apply it, and prove a second plan is unchanged.'
+tags:
+  - opentofu
+  - lab
+  - playbooks
+status: growing
+sources:
+  - https://opentofu.org/docs/language/resources/tf-data/
+  - https://opentofu.org/docs/cli/commands/plan/
+  - https://opentofu.org/docs/cli/commands/apply/
+---
+
+Use this exercise to observe configuration, state, planning, application, and outputs without a
+cloud account. It uses the built-in `terraform_data` resource, which participates in the resource
+lifecycle but does not provision a VM or contact a cloud API. See
+[the built-in resource](https://opentofu.org/docs/language/resources/tf-data/).
+
+## Prerequisites and boundary
+
+Install a supported OpenTofu CLI, confirm `tofu version`, and use a shell with `mktemp`. This lab
+creates local configuration, state, plan artifacts, and local initialization metadata only inside
+a newly allocated temporary directory. There are no real passwords or remote backends in the example.
+Do not run it inside an existing infrastructure root.
+
+```bash
+lab_dir="$(mktemp -d "${TMPDIR:-/tmp}/wiki-tofu.XXXXXX")"
+cd "$lab_dir"
+```
+
+## 1. Create the complete configuration
+
+Create `main.tf` with this content:
+
+```hcl
+variable "replicas" {
+  type    = number
+  default = 2
+
+  validation {
+    condition     = var.replicas >= 1 && floor(var.replicas) == var.replicas
+    error_message = "replicas must be a positive integer."
+  }
+}
+
+resource "terraform_data" "service" {
+  input = {
+    name     = "example-api"
+    replicas = var.replicas
+  }
+}
+
+output "service" {
+  value = terraform_data.service.output
+}
+```
+
+The input is a typed module variable. The resource stores an object as its `input` and exposes its
+result through `output`. The root output makes that resource result available to the CLI. Names in
+this configuration are local identifiers, not proof of an external application.
+
+## 2. Initialize and inspect a plan
+
+```bash
+tofu fmt -check
+tofu init -input=false
+tofu validate
+tofu plan -input=false -out=lab.tfplan
+tofu show lab.tfplan
+```
+
+Expect one resource to be created and no remote infrastructure operations. Initialization uses the
+built-in provider. Planning creates a saved artifact but has not yet recorded an applied resource.
+If the CLI asks to initialize a remote backend or download an unrelated provider, stop: you are not
+running this isolated configuration.
+
+## 3. Apply exactly the reviewed artifact
+
+```bash
+tofu apply -input=false lab.tfplan
+tofu output -json
+```
+
+Passing the saved plan is approval; there is no second interactive approval prompt. This changes
+local lab state only because this exact configuration contains only `terraform_data`. The same CLI
+form against a real provider root can change real infrastructure.
+
+Verify `service.value.name` is `example-api` and `service.value.replicas` is 2 in the JSON output.
+The root output is recorded state, not a health request to an application.
+
+## 4. Prove convergence and predict a change
+
+```bash
+tofu plan -input=false -detailed-exitcode
+```
+
+Expect no changes and exit code 0. With `-detailed-exitcode`, 2 means a successful plan containing
+changes, while 1 means an error. Next, preview a different input:
+
+```bash
+tofu plan -input=false -var='replicas=3'
+```
+
+Expect an in-place resource input update; the default configuration has not been edited and this
+preview has not been applied. Finally, `-var='replicas=0'` should fail the validation rule.
+
+## Verification and cleanup
+
+A successful exercise demonstrates a parsed/validated configuration, reviewed plan, recorded local
+resource, output contract, no-change second plan, and rejection of an invalid input. It demonstrates
+neither remote backend locking nor cloud permissions, VM readiness, or backup restoration.
+
+All artifacts belong to the printed temporary lab directory. Keep them for inspection or remove that
+known directory through your normal file manager when finished. No cloud destroy command is needed.
+Continue with [state identity](/docs/infrastructure/opentofu/state/identity-and-drift) and the
+[real-change review procedure](/docs/playbooks/operations/infrastructure/review-infrastructure-change).

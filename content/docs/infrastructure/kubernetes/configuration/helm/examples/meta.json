@@ -1,0 +1,4 @@
+{
+  "title": "Helm Examples",
+  "pages": ["index", "first-chart", "argocd"]
+}
